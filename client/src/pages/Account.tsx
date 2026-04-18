@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 
 const menuItems = [
-  { icon: FileText, label: "我的笔记", desc: "查看已生成的笔记", count: "12 篇" },
+  { icon: FileText, label: "我的笔记", desc: "查看已生成的笔记和草稿", count: "12 篇" },
   { icon: Package, label: "商品库", desc: "管理已导入的商品", count: "5 个" },
   { icon: BarChart3, label: "数据看板", desc: "查看笔记发布效果" },
   { icon: CreditCard, label: "额度管理", desc: "查看和购买生成额度", count: "32 / 50" },
