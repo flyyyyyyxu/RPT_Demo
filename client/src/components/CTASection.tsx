@@ -6,9 +6,11 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
-import { toast } from "sonner";
+import { useLocation } from "wouter";
 
 export default function CTASection() {
+  const [, navigate] = useLocation();
+
   return (
     <section id="cta" className="py-20 lg:py-28 bg-white">
       <div className="container">
@@ -53,7 +55,7 @@ export default function CTASection() {
                 <Button
                   size="lg"
                   className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/25 px-8 h-12 text-base"
-                  onClick={() => toast.success("欢迎体验笔记灵感工坊！")}
+                  onClick={() => navigate("/create")}
                 >
                   立即体验
                   <ArrowRight className="w-4 h-4 ml-1.5" />

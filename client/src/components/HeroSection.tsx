@@ -7,11 +7,14 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Play } from "lucide-react";
 import { motion } from "framer-motion";
+import { useLocation } from "wouter";
 
 const HERO_BG = "https://d2xsxph8kpxj0f.cloudfront.net/310519663319340501/HSq26w75LQs6d3FSyDF3sX/hero-bg-abstract-5XSBi9GhnYPDPgmTCgRgGm.webp";
 const HERO_MOCKUP = "https://d2xsxph8kpxj0f.cloudfront.net/310519663319340501/HSq26w75LQs6d3FSyDF3sX/hero-mockup-QRrKyuBhfd7BgpeVnwj6d5.webp";
 
 export default function HeroSection() {
+  const [, navigate] = useLocation();
+
   return (
     <section
       id="hero"
@@ -69,7 +72,7 @@ export default function HeroSection() {
               <Button
                 size="lg"
                 className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/25 px-6 h-12"
-                onClick={() => document.getElementById("cta")?.scrollIntoView({ behavior: "smooth" })}
+                onClick={() => navigate("/create")}
               >
                 立即体验
                 <ArrowRight className="w-4 h-4 ml-1.5" />
