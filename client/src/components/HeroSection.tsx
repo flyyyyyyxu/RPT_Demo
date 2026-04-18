@@ -52,20 +52,21 @@ export default function HeroSection() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
               </span>
-              AI 驱动的商家内容创作工具
+              AI 驱动的商家爆文批量生产引擎
             </motion.div>
 
             <h1 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold leading-[1.2] tracking-tight text-foreground mb-5">
-              帮商家更快产出
+              帮商家高效产出
               <br />
               <span className="bg-gradient-to-r from-primary to-coral-dark bg-clip-text text-transparent">
-                适合小红书的种草笔记
+                更有买家感的种草笔记
               </span>
             </h1>
 
             <p className="text-base lg:text-lg text-muted-foreground leading-relaxed mb-8 max-w-lg">
-              从商品信息、竞品评论到内容生成，一站式完成商家内容创作。
-              让不会写笔记的商家，也能产出高质量种草内容。
+              自动分析竞品爆文逻辑，提炼商品核心卖点，一次生成多版本笔记。
+              <br className="hidden sm:block" />
+              0 运营经验，也能持续产出高互动、高转化的种草内容。
             </p>
 
             <div className="flex flex-wrap gap-3">
@@ -74,7 +75,7 @@ export default function HeroSection() {
                 className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/25 px-6 h-12"
                 onClick={() => navigate("/create")}
               >
-                立即体验
+                免费生成第一篇爆款笔记
                 <ArrowRight className="w-4 h-4 ml-1.5" />
               </Button>
               <Button
@@ -91,9 +92,9 @@ export default function HeroSection() {
             {/* Stats */}
             <div className="flex gap-8 mt-10 pt-8 border-t border-border/50">
               {[
-                { value: "3 步", label: "完成笔记生成" },
-                { value: "10 秒", label: "AI 生成速度" },
-                { value: "多版本", label: "一键生成对比" },
+                { value: "3 步", label: "完成爆文生成" },
+                { value: "10 秒", label: "AI 一键出稿" },
+                { value: "多版本", label: "对比选择投放" },
               ].map((stat, i) => (
                 <motion.div
                   key={stat.label}
@@ -101,7 +102,7 @@ export default function HeroSection() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.5 + i * 0.1, duration: 0.4 }}
                 >
-                  <div className="text-xl font-bold text-foreground">{stat.value}</div>
+                  <div className="text-2xl lg:text-3xl font-extrabold text-foreground">{stat.value}</div>
                   <div className="text-xs text-muted-foreground mt-0.5">{stat.label}</div>
                 </motion.div>
               ))}
@@ -118,7 +119,7 @@ export default function HeroSection() {
             <div className="relative rounded-2xl overflow-hidden shadow-2xl shadow-black/10 border border-white/60 bg-white">
               <img
                 src={HERO_MOCKUP}
-                alt="笔记灵感工坊产品界面"
+                alt="种草机产品界面"
                 className="w-full h-auto"
               />
               {/* Subtle overlay for depth */}

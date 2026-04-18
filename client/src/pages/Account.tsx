@@ -45,7 +45,7 @@ export default function Account() {
           <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center">
             <Sparkles className="w-3.5 h-3.5 text-white" />
           </div>
-          <span className="text-sm font-bold">笔记灵感工坊</span>
+          <span className="text-sm font-bold">种草机</span>
         </div>
       </header>
 

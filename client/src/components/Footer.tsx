@@ -13,7 +13,7 @@ export default function Footer() {
             <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center shadow-sm shadow-primary/15">
               <Sparkles className="w-3.5 h-3.5 text-white" />
             </div>
-            <span className="text-sm font-bold text-foreground">笔记灵感工坊</span>
+            <span className="text-sm font-bold text-foreground">种草机</span>
           </div>
           <div className="text-xs text-muted-foreground">
             产品 Demo 展示 · 面向小红书商家的 AI 内容创作工具

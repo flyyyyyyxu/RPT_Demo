@@ -44,7 +44,7 @@ export default function Header() {
             <Sparkles className="w-4.5 h-4.5 text-white" />
           </div>
           <span className="text-lg font-bold tracking-tight text-foreground">
-            笔记灵感工坊
+            种草机
           </span>
         </a>
 
