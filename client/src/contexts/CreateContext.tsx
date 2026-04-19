@@ -23,6 +23,7 @@ export interface ProductInfo {
   category?: string;
   subcategory?: string;
   usageScenarios?: string[];
+  matchedCategoryId?: string; // stable preset id from LLM or local fallback
 }
 
 export interface CompetitorInsight {

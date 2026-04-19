@@ -150,6 +150,19 @@ function vitePluginApiRoutes(): Plugin {
           res.end(JSON.stringify({ error: e.message ?? "Unexpected API error" }));
         }
       });
+
+      server.middlewares.use("/api/product-understanding", async (req, res, next) => {
+        if (req.method !== "POST") return next();
+        try {
+          const { default: handler } = await import("./api/product-understanding");
+          (req as IncomingMessage & { body?: unknown }).body = await readJsonBody(req);
+          await handler(req, createApiResponse(res));
+        } catch (e: any) {
+          res.statusCode = 500;
+          res.setHeader("Content-Type", "application/json; charset=utf-8");
+          res.end(JSON.stringify({ error: e.message ?? "Unexpected API error" }));
+        }
+      });
     },
   };
 }

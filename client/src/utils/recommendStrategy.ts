@@ -21,6 +21,7 @@ import type {
   RecommendedStrategy,
 } from "../types/contentStrategy";
 import { normalizeCategory } from "./normalizeCategory";
+import { getPresetById } from "../config/productCategoryPresets";
 
 function collectSearchText(p: ProductInfoForRec): string {
   return [
@@ -44,12 +45,20 @@ export function recommendContentStrategy(
   const p: ProductInfoForRec = info ?? {};
   const searchText = collectSearchText(p);
 
-  // Step 1–3: normalize + lookup driver. If the normalized key isn't in the
-  // map, try to detect any known category word inside the full search text so
-  // users who only typed the category in the product name still get a hit.
+  // Step 1–3: resolve driverType.
+  // Priority 1: stable preset id (from LLM or local fallback) → direct lookup.
+  // Priority 2: normalize category string → CATEGORY_DRIVER_MAP.
+  // Priority 3: scan searchText for any known category word.
+  let driverType = p.matchedCategoryId
+    ? getPresetById(p.matchedCategoryId)?.driverType
+    : undefined;
+  let matchedCategoryKey = driverType ? (p.matchedCategoryId ?? "") : "";
+
   const normalized = normalizeCategory(p.category, p.subcategory);
-  let driverType = normalized ? CATEGORY_DRIVER_MAP[normalized] : undefined;
-  let matchedCategoryKey = driverType ? normalized : "";
+  if (!driverType) {
+    driverType = normalized ? CATEGORY_DRIVER_MAP[normalized] : undefined;
+    matchedCategoryKey = driverType ? (normalized ?? "") : "";
+  }
 
   if (!driverType && searchText) {
     for (const [cat, driver] of Object.entries(CATEGORY_DRIVER_MAP)) {

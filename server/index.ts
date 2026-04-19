@@ -5,6 +5,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import competitorInsightHandler from "../api/competitor-insight";
 import generateNotesHandler from "../api/generate-notes";
+import productUnderstandingHandler from "../api/product-understanding";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -49,6 +50,7 @@ async function startServer() {
   app.use(express.json({ limit: "1mb" }));
   app.post("/api/competitor-insight", competitorInsightHandler);
   app.post("/api/generate-notes", generateNotesHandler);
+  app.post("/api/product-understanding", productUnderstandingHandler);
 
   // Serve static files from dist/public in production
   const staticPath =

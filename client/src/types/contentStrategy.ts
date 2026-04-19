@@ -39,6 +39,7 @@ export type ContentDriverType =
 
 // Loose input shape — most fields optional so recommender tolerates partial data.
 export interface ProductInfoForRec {
+  matchedCategoryId?: string; // preset id; takes priority over category string
   category?: string;
   subcategory?: string;
   productName?: string;

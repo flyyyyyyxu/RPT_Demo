@@ -31,14 +31,32 @@ import {
   inferProductSemantics,
   parsePriceRange,
 } from "@/utils/productSemantics";
+import { inferProductUnderstandingLocal } from "@/utils/localProductUnderstanding";
+import {
+  CATEGORY_OVERRIDES,
+  FALLBACK_PRESET,
+  getPresetById,
+  type CategoryPreset,
+} from "@/config/productCategoryPresets";
 import { toast } from "sonner";
 
-const SELLING_POINT_PRESETS = [
-  "温和", "小红瓶", "学生党", "氨基酸", "保湿", "控油", "敏感肌适用", "大牌平替",
-];
-const AUDIENCE_PRESETS = [
-  "敏感肌", "学生", "职场新人", "宝妈", "熬夜党", "油皮", "干皮",
-];
+function applyOverrides(
+  basePoints: string[],
+  baseAudiences: string[],
+  text: string
+): { sellingPoints: string[]; audiences: string[] } {
+  const extraPoints: string[] = [];
+  const extraAudiences: string[] = [];
+  for (const ov of CATEGORY_OVERRIDES) {
+    if (!ov.match.some((m) => text.includes(m))) continue;
+    if (ov.addSellingPoints) extraPoints.push(...ov.addSellingPoints);
+    if (ov.addAudiences) extraAudiences.push(...ov.addAudiences);
+  }
+  return {
+    sellingPoints: Array.from(new Set([...basePoints, ...extraPoints])),
+    audiences: Array.from(new Set([...baseAudiences, ...extraAudiences])),
+  };
+}
 
 
 export default function CreateStep1() {
@@ -59,11 +77,36 @@ export default function CreateStep1() {
   const [customAudience, setCustomAudience] = useState("");
   const [insightGenerated, setInsightGenerated] = useState(productInfo.competitorInsight?.generated ?? false);
   const [insightLoading, setInsightLoading] = useState(false);
+  const [nextLoading, setNextLoading] = useState(false);
   const [insights, setInsights] = useState<InsightItem[]>(productInfo.competitorInsight?.items ?? []);
   const inferredSemantics = useMemo(
     () => inferProductSemantics(name, description, sellingPoints, audience),
     [name, description, sellingPoints, audience]
   );
+
+  // Local-only preset match for realtime candidate switching. LLM understanding
+  // is deferred to Step1 handleNext (Step E) — this preview stays free and instant.
+  const matchedPreset = useMemo<CategoryPreset | null>(() => {
+    const r = inferProductUnderstandingLocal({
+      productName: name,
+      productDescription: description,
+      sellingPoints,
+      targetAudience: audience,
+    });
+    if (!r) return null;
+    return getPresetById(r.matchedCategoryId) ?? null;
+  }, [name, description, sellingPoints, audience]);
+
+  const { sellingPointCandidates, audienceCandidates } = useMemo(() => {
+    const preset = matchedPreset ?? FALLBACK_PRESET;
+    const text = [name, description, ...sellingPoints, ...audience].join(" ");
+    const merged = applyOverrides(preset.sellingPoints, preset.audiences, text);
+    return {
+      sellingPointCandidates: merged.sellingPoints,
+      audienceCandidates: merged.audiences,
+    };
+  }, [matchedPreset, name, description, sellingPoints, audience]);
+
   const priceRange = formatPriceRange(priceMin, priceMax);
 
   useEffect(() => {
@@ -146,19 +189,50 @@ export default function CreateStep1() {
     }
   };
 
-  const handleNext = () => {
-    if (!name.trim()) {
-      toast.error("请填写商品名称");
-      return;
+  const handleNext = async () => {
+    if (!name.trim()) { toast.error("请填写商品名称"); return; }
+    if (!description.trim()) { toast.error("请填写商品描述"); return; }
+    if (sellingPoints.length === 0) { toast.error("请至少选择一个核心卖点"); return; }
+
+    setNextLoading(true);
+    let matchedCategoryId: string | undefined;
+    let llmKeywords: string[] = [];
+    let llmScenarios: string[] = [];
+
+    // 1. Try LLM understanding.
+    try {
+      const res = await fetch("/api/product-understanding", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productName: name, productDescription: description, sellingPoints, targetAudience: audience }),
+      });
+      const data = await res.json();
+      if (res.ok && data.matched && data.result) {
+        matchedCategoryId = data.result.matchedCategoryId;
+        llmKeywords = data.result.productKeywords ?? [];
+        llmScenarios = data.result.usageScenarios ?? [];
+      }
+    } catch {
+      // Network error → fall through to local
     }
-    if (!description.trim()) {
-      toast.error("请填写商品描述");
-      return;
+
+    // 2. Local fallback when LLM didn't match.
+    if (!matchedCategoryId) {
+      const local = inferProductUnderstandingLocal({ productName: name, productDescription: description, sellingPoints, targetAudience: audience });
+      if (local) {
+        matchedCategoryId = local.matchedCategoryId;
+        llmKeywords = local.productKeywords;
+      }
     }
-    if (sellingPoints.length === 0) {
-      toast.error("请至少选择一个核心卖点");
-      return;
-    }
+
+    // 3. Merge semantics: LLM/local enriches inferredSemantics (existing price logic unchanged).
+    const mergedKeywords = Array.from(new Set([...llmKeywords, ...inferredSemantics.productKeywords])).slice(0, 10);
+    const mergedScenarios = llmScenarios.length > 0
+      ? llmScenarios
+      : inferredSemantics.usageScenarios.length > 0
+        ? inferredSemantics.usageScenarios
+        : productInfo.usageScenarios ?? [];
+
     setProductInfo({
       name,
       description,
@@ -170,28 +244,24 @@ export default function CreateStep1() {
       importFromLibrary: false,
       productImages: productInfo.productImages,
       competitorInsight: insightGenerated ? { generated: true, items: insights } : null,
-      productKeywords: inferredSemantics.productKeywords,
+      productKeywords: mergedKeywords,
       category: inferredSemantics.category || productInfo.category,
       subcategory: inferredSemantics.subcategory || productInfo.subcategory,
-      usageScenarios: inferredSemantics.usageScenarios.length > 0
-        ? inferredSemantics.usageScenarios
-        : productInfo.usageScenarios,
+      usageScenarios: mergedScenarios,
+      matchedCategoryId,
     });
 
-    // Recommend a content strategy based on current product info. Only overwrite
-    // the user's Step2 picks when the recommendation actually changed — this lets
-    // users go back to Step1 without losing manual edits they made on Step2.
+    // 4. Recommend strategy — matchedCategoryId lets recommender skip normalize.
     const recommended = recommendContentStrategy({
+      matchedCategoryId,
       category: inferredSemantics.category || productInfo.category,
       subcategory: inferredSemantics.subcategory || productInfo.subcategory,
       productName: name,
       productDescription: description,
-      productKeywords: inferredSemantics.productKeywords,
+      productKeywords: mergedKeywords,
       sellingPoints,
       targetAudience: audience,
-      usageScenarios: inferredSemantics.usageScenarios.length > 0
-        ? inferredSemantics.usageScenarios
-        : productInfo.usageScenarios,
+      usageScenarios: mergedScenarios,
       priceRange,
     });
     const prev = contentStrategy.recommendedStrategy;
@@ -214,6 +284,7 @@ export default function CreateStep1() {
       }),
     });
 
+    setNextLoading(false);
     navigate("/create/strategy");
   };
 
@@ -272,7 +343,7 @@ export default function CreateStep1() {
             {/* Selling points */}
             <FormField label="核心卖点" required hint="最多 5 个，卖点越具体生成效果越好">
               <div className="flex flex-wrap gap-2 mb-3">
-                {SELLING_POINT_PRESETS.map((tag) => (
+                {sellingPointCandidates.map((tag) => (
                   <TagChip
                     key={tag}
                     label={tag}
@@ -281,10 +352,10 @@ export default function CreateStep1() {
                   />
                 ))}
               </div>
-              {sellingPoints.filter((t) => !SELLING_POINT_PRESETS.includes(t)).length > 0 && (
+              {sellingPoints.filter((t) => !sellingPointCandidates.includes(t)).length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-3">
                   {sellingPoints
-                    .filter((t) => !SELLING_POINT_PRESETS.includes(t))
+                    .filter((t) => !sellingPointCandidates.includes(t))
                     .map((tag) => (
                       <TagChip
                         key={tag}
@@ -320,7 +391,7 @@ export default function CreateStep1() {
             {/* Target audience */}
             <FormField label="目标人群" hint="选填，不超过 3 个效果最好">
               <div className="flex flex-wrap gap-2 mb-3">
-                {AUDIENCE_PRESETS.map((tag) => (
+                {audienceCandidates.map((tag) => (
                   <TagChip
                     key={tag}
                     label={tag}
@@ -329,10 +400,10 @@ export default function CreateStep1() {
                   />
                 ))}
               </div>
-              {audience.filter((t) => !AUDIENCE_PRESETS.includes(t)).length > 0 && (
+              {audience.filter((t) => !audienceCandidates.includes(t)).length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-3">
                   {audience
-                    .filter((t) => !AUDIENCE_PRESETS.includes(t))
+                    .filter((t) => !audienceCandidates.includes(t))
                     .map((tag) => (
                       <TagChip
                         key={tag}
@@ -458,9 +529,13 @@ export default function CreateStep1() {
               <Button
                 className="bg-primary hover:bg-primary/90 text-white shadow-md shadow-primary/20 px-6"
                 onClick={handleNext}
+                disabled={nextLoading}
               >
-                下一步：内容策略
-                <ArrowRight className="w-4 h-4 ml-1.5" />
+                {nextLoading ? (
+                  <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" />分析商品中…</>
+                ) : (
+                  <>下一步：内容策略<ArrowRight className="w-4 h-4 ml-1.5" /></>
+                )}
               </Button>
             </div>
           </div>

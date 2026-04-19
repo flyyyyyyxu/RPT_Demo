@@ -83,3 +83,25 @@ export interface CompetitorInsightResponse {
   insights: CompetitorInsightItem[];
   error?: string;
 }
+
+export interface ProductUnderstandingRequest {
+  productName: string;
+  productDescription?: string;
+  sellingPoints?: string[];
+  targetAudience?: string[];
+}
+
+export interface ProductUnderstandingResult {
+  matchedCategoryId: string;
+  confidence: number;
+  productKeywords: string[];
+  usageScenarios: string[];
+  reason: string;
+}
+
+export interface ProductUnderstandingResponse {
+  matched: boolean;
+  result: ProductUnderstandingResult | null;
+  fallbackReason?: string;
+  error?: string;
+}
