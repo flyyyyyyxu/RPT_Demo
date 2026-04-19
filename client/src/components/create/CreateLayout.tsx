@@ -18,7 +18,7 @@ interface CreateLayoutProps {
 const steps = [
   { id: 1, label: "商品信息", path: "/create" },
   { id: 2, label: "内容策略", path: "/create/strategy" },
-  { id: 3, label: "图片生成", path: "/create/images" },
+  { id: 3, label: "图片编辑", path: "/create/images" },
   { id: 4, label: "生成预览", path: "/create/result" },
 ];
 

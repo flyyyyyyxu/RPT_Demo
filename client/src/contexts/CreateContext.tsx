@@ -1,6 +1,6 @@
 /*
  * Context for sharing data across the 4-step create flow.
- * Steps: 商品信息 → 内容策略 → 图片生成 → 生成预览
+ * Steps: 商品信息 → 内容策略 → 图片编辑 → 生成预览
  * Persists form state so users can go back/forward without losing data.
  */
 import { createContext, useContext, useState, type ReactNode } from "react";
@@ -41,11 +41,31 @@ export interface ContentStrategy {
 
 export interface ImageGenConfig {
   mode: "ai-generate" | "upload" | "edit";
+  coverSource: "upload" | "ai-optimize";
   coverStyle: string;
   aspectRatio: string;
   imageCount: number;
+  sceneDescription: string;
+  sceneTags: string[];
   uploadedImages: string[];
   generatedImages: string[];
+  // Step 2: 封面文字与样式
+  selectedCoverIndex: number;
+  mainText: string;
+  mainTextSize: number;
+  mainTextStyle: string;
+  subText: string;
+  subTextSize: number;
+  subTextStyle: string;
+  // Step 3: 上传配图
+  supportImages: SupportImage[];
+  // Step 4: 合成预览
+  imageSubStep: number; // 1-4 子步骤
+}
+
+export interface SupportImage {
+  url: string;
+  label: string;
 }
 
 interface CreateContextType {
@@ -82,11 +102,23 @@ const defaultContentStrategy: ContentStrategy = {
 
 const defaultImageConfig: ImageGenConfig = {
   mode: "ai-generate",
-  coverStyle: "产品实拍风",
+  coverSource: "upload",
+  coverStyle: "product-real",
   aspectRatio: "3:4",
-  imageCount: 3,
+  imageCount: 4,
+  sceneDescription: "",
+  sceneTags: [],
   uploadedImages: [],
   generatedImages: [],
+  selectedCoverIndex: 0,
+  mainText: "",
+  mainTextSize: 50,
+  mainTextStyle: "bold-shadow",
+  subText: "",
+  subTextSize: 30,
+  subTextStyle: "handwrite",
+  supportImages: [],
+  imageSubStep: 1,
 };
 
 const CreateContext = createContext<CreateContextType | null>(null);
