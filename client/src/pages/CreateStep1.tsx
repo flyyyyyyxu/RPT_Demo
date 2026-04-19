@@ -141,7 +141,7 @@ export default function CreateStep1() {
   };
 
   return (
-    <CreateLayout currentStep={1} costCredits={2}>
+    <CreateLayout currentStep={1}>
       <div className="max-w-6xl mx-auto px-4 lg:px-8 py-8">
         {/* Page header */}
         <div className="mb-8">

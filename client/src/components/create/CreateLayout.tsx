@@ -1,18 +1,12 @@
-/*
- * Design: SaaS 工具站美学 - 创作流程共享布局
- * - 顶部导航栏（简化版）
- * - 4步骤指示器：商品信息 → 内容策略 → 图片生成 → 生成预览
- * - 内容区域
- */
 import { Sparkles, Save, User, Check } from "lucide-react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
+import { useCreateContext } from "@/contexts/CreateContext";
 
 interface CreateLayoutProps {
   currentStep: 1 | 2 | 3 | 4;
   children: React.ReactNode;
   rightAction?: React.ReactNode;
-  costCredits?: number;
 }
 
 const steps = [
@@ -22,46 +16,78 @@ const steps = [
   { id: 4, label: "生成预览", path: "/create/result" },
 ];
 
-export default function CreateLayout({ currentStep, children, rightAction, costCredits = 2 }: CreateLayoutProps) {
+export default function CreateLayout({ currentStep, children, rightAction }: CreateLayoutProps) {
   const [, navigate] = useLocation();
+  const { imageConfig } = useCreateContext();
+
+  const noteCredits = 3;
+  const imageCredits = currentStep >= 3 ? (imageConfig.imageCount || 3) : 0;
+  const totalCredits = noteCredits + imageCredits;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Top nav */}
-      <header className="h-14 border-b border-border/50 bg-white flex items-center px-4 lg:px-6 shrink-0">
-        <div className="flex items-center gap-2.5 mr-8">
-          <a href="/" className="flex items-center gap-2 group">
-            <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center">
-              <Sparkles className="w-3.5 h-3.5 text-white" />
-            </div>
-            <span className="text-sm font-bold text-foreground">种草机</span>
-          </a>
+      {/* Single unified header with steps inline */}
+      <header className="h-14 border-b border-border/50 bg-white flex items-center px-4 lg:px-6 shrink-0 gap-4">
+        {/* Logo */}
+        <a href="/" className="flex items-center gap-2 shrink-0 group">
+          <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center">
+            <Sparkles className="w-3.5 h-3.5 text-white" />
+          </div>
+          <span className="text-sm font-bold text-foreground hidden sm:inline">种草机</span>
+        </a>
+
+        {/* Step indicator — centered, fills remaining space */}
+        <div className="flex-1 flex items-center justify-center">
+          <div className="flex items-center">
+            {steps.map((step, i) => (
+              <div key={step.id} className="flex items-center">
+                <button
+                  onClick={() => step.id < currentStep && navigate(step.path)}
+                  className={step.id < currentStep ? "cursor-pointer" : "cursor-default"}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <div
+                      className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold transition-all ${
+                        step.id < currentStep
+                          ? "bg-primary text-white"
+                          : step.id === currentStep
+                          ? "bg-primary text-white shadow-sm shadow-primary/30"
+                          : "bg-secondary text-muted-foreground"
+                      }`}
+                    >
+                      {step.id < currentStep ? <Check className="w-3 h-3" /> : step.id}
+                    </div>
+                    <span
+                      className={`text-xs font-medium hidden md:inline ${
+                        step.id === currentStep
+                          ? "text-foreground"
+                          : step.id < currentStep
+                          ? "text-foreground/60"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      {step.label}
+                    </span>
+                  </div>
+                </button>
+
+                {i < steps.length - 1 && (
+                  <div
+                    className={`w-8 lg:w-12 h-px mx-2 shrink-0 ${
+                      step.id < currentStep ? "bg-primary" : "bg-border"
+                    }`}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
         </div>
 
-        <nav className="hidden md:flex items-center gap-1 text-sm">
-          {["新建笔记", "我的笔记", "商品库", "数据"].map((item, i) => (
-            <button
-              key={item}
-              className={`px-3 py-1.5 rounded-md font-medium transition-colors ${
-                i === 0
-                  ? "text-foreground bg-secondary"
-                  : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
-              }`}
-              onClick={() => {
-                if (i === 0) return;
-                toast.info("功能即将上线");
-              }}
-            >
-              {item}
-            </button>
-          ))}
-        </nav>
-
-        <div className="ml-auto flex items-center gap-3">
-          {/* Cost display */}
-          <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground bg-secondary/60 px-2.5 py-1 rounded-md">
+        {/* Right actions */}
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="hidden sm:flex items-center gap-1 text-xs text-muted-foreground bg-secondary/60 px-2.5 py-1 rounded-md">
             <span>本次预计消耗</span>
-            <span className="font-bold text-primary">{costCredits}</span>
+            <span className="font-bold text-primary mx-0.5">{totalCredits}</span>
             <span>额度</span>
           </div>
           {rightAction}
@@ -70,7 +96,7 @@ export default function CreateLayout({ currentStep, children, rightAction, costC
             onClick={() => toast.success("草稿已保存")}
           >
             <Save className="w-4 h-4" />
-            <span className="hidden sm:inline">保存草稿</span>
+            <span className="hidden sm:inline text-xs">保存草稿</span>
           </button>
           <button
             onClick={() => navigate("/account")}
@@ -81,61 +107,6 @@ export default function CreateLayout({ currentStep, children, rightAction, costC
         </div>
       </header>
 
-      {/* Step indicator */}
-      <div className="border-b border-border/40 bg-white py-4 shrink-0">
-        <div className="max-w-3xl mx-auto px-4">
-          <div className="flex items-center justify-center">
-            {steps.map((step, i) => (
-              <div key={step.id} className="flex items-center">
-                <button
-                  onClick={() => {
-                    if (step.id < currentStep) navigate(step.path);
-                  }}
-                  className={`flex items-center gap-2 ${
-                    step.id < currentStep ? "cursor-pointer" : "cursor-default"
-                  }`}
-                >
-                  <div
-                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                      step.id < currentStep
-                        ? "bg-primary text-white"
-                        : step.id === currentStep
-                        ? "bg-primary text-white shadow-md shadow-primary/25"
-                        : "bg-secondary text-muted-foreground"
-                    }`}
-                  >
-                    {step.id < currentStep ? (
-                      <Check className="w-3.5 h-3.5" />
-                    ) : (
-                      step.id
-                    )}
-                  </div>
-                  <span
-                    className={`text-sm font-medium hidden sm:inline ${
-                      step.id === currentStep
-                        ? "text-foreground"
-                        : step.id < currentStep
-                        ? "text-foreground/70"
-                        : "text-muted-foreground"
-                    }`}
-                  >
-                    {step.label}
-                  </span>
-                </button>
-                {i < steps.length - 1 && (
-                  <div
-                    className={`w-10 sm:w-16 lg:w-20 h-px mx-2 sm:mx-3 ${
-                      step.id < currentStep ? "bg-primary" : "bg-border"
-                    }`}
-                  />
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Content */}
       <main className="flex-1 overflow-auto">
         {children}
       </main>

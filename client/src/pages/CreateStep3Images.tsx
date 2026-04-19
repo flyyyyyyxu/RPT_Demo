@@ -29,7 +29,7 @@ export default function CreateStep3Images() {
   };
 
   return (
-    <CreateLayout currentStep={3} costCredits={imageConfig.imageCount}>
+    <CreateLayout currentStep={3}>
       <div className="max-w-6xl mx-auto px-4 lg:px-8 py-8">
         {/* Page header */}
         <div className="mb-6">

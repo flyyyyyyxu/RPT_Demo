@@ -9,11 +9,21 @@ function json(data: unknown, status = 200): Response {
   });
 }
 
-// Extract a JSON array from text that may contain reasoning preamble or markdown fences
+function sanitizeJson(text: string): string {
+  return (
+    text
+      .replace(/```json\s*/gi, "")
+      .replace(/```\s*/g, "")
+      .replace(/[\u201c\u201d\u2018\u2019\u300c\u300d\uff02]/g, '"')
+      .replace(/\uff1a/g, ":")
+      .replace(/\uff0c/g, ",")
+      .replace(/,\s*([}\]])/g, "$1")
+      .trim()
+  );
+}
+
 function extractJsonArray(text: string): any[] {
-  // Strip markdown code fences
-  let s = text.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
-  // Find the first [ and last ] to extract the array
+  const s = sanitizeJson(text);
   const start = s.indexOf("[");
   const end = s.lastIndexOf("]");
   if (start === -1 || end === -1 || end <= start) {

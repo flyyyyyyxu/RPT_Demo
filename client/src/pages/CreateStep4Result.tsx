@@ -1,17 +1,3 @@
-/*
- * Step 4: 生成预览
- * Layout per reference screenshot:
- * Row 1: 3 version summary cards (horizontal)
- * Row 2: 3 feed preview cards with edit button (horizontal)
- * Row 3: 3 AI insight panels (horizontal)
- * Row 4: Quick tweak bar (spans all 3 columns)
- * 
- * Changes:
- * - 6.1 Three versions laid out horizontally
- * - 6.2 手动编辑 → 再生成一版（消耗1额度）
- * - 6.3 再次生成 → 重新生成（消耗2额度）
- * - 6.4 卡片视角旁有编辑按钮
- */
 import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
@@ -29,12 +15,9 @@ import {
   RefreshCw,
   Send,
   Save,
-  Clock,
-  ChevronRight,
-  Zap,
   BarChart3,
   AlertTriangle,
-  Loader2,
+  Check,
 } from "lucide-react";
 import CreateLayout from "@/components/create/CreateLayout";
 import { useCreateContext } from "@/contexts/CreateContext";
@@ -59,24 +42,25 @@ interface VersionData {
   suggestion: string;
 }
 
-
-const QUICK_TWEAKS = [
-  "更口语化",
-  "加一段使用前后对比",
-  "结尾改成问句",
-  "自定义",
-];
-
 export default function CreateStep4Result() {
   const [, navigate] = useLocation();
   const { productInfo, contentStrategy } = useCreateContext();
-  const [activeVersion, setActiveVersion] = useState(0);
-  const [tweakVersion, setTweakVersion] = useState(0);
-  const [customTweak, setCustomTweak] = useState("");
-  const [showCustomInput, setShowCustomInput] = useState(false);
+  const [selectedVersions, setSelectedVersions] = useState<Set<number>>(new Set([0, 1, 2]));
   const [versions, setVersions] = useState<VersionData[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [genError, setGenError] = useState<string | null>(null);
+
+  const toggleVersion = (i: number) => {
+    setSelectedVersions((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) {
+        if (next.size > 1) next.delete(i);
+      } else {
+        next.add(i);
+      }
+      return next;
+    });
+  };
 
   const generateNotes = useCallback(async () => {
     setLoading(true);
@@ -90,6 +74,7 @@ export default function CreateStep4Result() {
       const data = await res.json();
       if (!res.ok || data.error) throw new Error(data.error ?? "生成失败");
       setVersions(data.versions);
+      setSelectedVersions(new Set([0, 1, 2]));
     } catch (e: any) {
       setGenError(e.message ?? "笔记生成失败，请重试");
       toast.error("笔记生成失败，请重试");
@@ -104,7 +89,7 @@ export default function CreateStep4Result() {
 
   if (loading) {
     return (
-      <CreateLayout currentStep={4} costCredits={0}>
+      <CreateLayout currentStep={4}>
         <div className="max-w-7xl mx-auto px-4 lg:px-6 py-24 flex flex-col items-center justify-center gap-6">
           <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
             <Sparkles className="w-8 h-8 text-primary animate-pulse" />
@@ -141,13 +126,11 @@ export default function CreateStep4Result() {
 
   if (genError || !versions) {
     return (
-      <CreateLayout currentStep={4} costCredits={0}>
+      <CreateLayout currentStep={4}>
         <div className="max-w-7xl mx-auto px-4 lg:px-6 py-24 flex flex-col items-center justify-center gap-4">
           <AlertTriangle className="w-12 h-12 text-amber-400" />
           <h2 className="text-lg font-bold">生成遇到了问题</h2>
-          <p className="text-sm text-muted-foreground text-center max-w-sm">
-            {genError || "未知错误"}
-          </p>
+          <p className="text-sm text-muted-foreground text-center max-w-sm">{genError || "未知错误"}</p>
           <Button onClick={generateNotes} className="bg-primary text-white mt-2">
             <RefreshCw className="w-4 h-4 mr-2" />
             重新生成
@@ -157,8 +140,10 @@ export default function CreateStep4Result() {
     );
   }
 
+  const selectedCount = selectedVersions.size;
+
   return (
-    <CreateLayout currentStep={4} costCredits={0}>
+    <CreateLayout currentStep={4}>
       <div className="max-w-7xl mx-auto px-4 lg:px-6 py-8">
         {/* Page header */}
         <div className="mb-6">
@@ -169,63 +154,73 @@ export default function CreateStep4Result() {
             </span>
           </div>
           <p className="text-sm text-muted-foreground">
-            对比三个版本的笔记，查看 AI 洞察数据，选择最佳版本发布。
+            点击版本卡片可多选，查看 AI 洞察数据，选择最佳版本发布。
           </p>
         </div>
 
-        {/* Row 1: Version summary cards */}
+        {/* Row 1: Version summary cards — multi-select */}
         <div className="grid grid-cols-3 gap-4 mb-6">
-          {versions.map((v, i) => (
-            <button
-              key={v.id}
-              onClick={() => setActiveVersion(i)}
-              className={`text-left p-4 rounded-xl border-2 transition-all duration-200 ${
-                activeVersion === i
-                  ? "border-primary bg-primary/5 shadow-sm"
-                  : "border-border/60 bg-white hover:border-primary/20"
-              }`}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
+          {versions.map((v, i) => {
+            const selected = selectedVersions.has(i);
+            return (
+              <button
+                key={v.id}
+                onClick={() => toggleVersion(i)}
+                className={`text-left p-4 rounded-xl border-2 transition-all duration-200 relative ${
+                  selected
+                    ? "border-primary bg-primary/5 shadow-sm"
+                    : "border-border/60 bg-white hover:border-primary/20"
+                }`}
+              >
+                {/* Check indicator */}
+                <div
+                  className={`absolute top-3 right-3 w-5 h-5 rounded-full flex items-center justify-center transition-all ${
+                    selected ? "bg-primary" : "bg-secondary border border-border"
+                  }`}
+                >
+                  {selected && <Check className="w-3 h-3 text-white" />}
+                </div>
+
+                <div className="flex items-center gap-2 mb-2 pr-6">
                   <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${
-                    activeVersion === i ? "bg-primary text-white" : "bg-secondary text-foreground"
+                    selected ? "bg-primary text-white" : "bg-secondary text-foreground"
                   }`}>
                     {v.label}
                   </span>
                   <span className="text-xs text-muted-foreground">{v.style}</span>
+                  <div className="flex items-center gap-0.5 ml-auto">
+                    {Array.from({ length: 5 }).map((_, si) => (
+                      <Star
+                        key={si}
+                        className={`w-3 h-3 ${si < v.stars ? "text-amber-400 fill-amber-400" : "text-border"}`}
+                      />
+                    ))}
+                  </div>
                 </div>
-                <div className="flex items-center gap-0.5">
-                  {Array.from({ length: 5 }).map((_, si) => (
-                    <Star
-                      key={si}
-                      className={`w-3 h-3 ${si < v.stars ? "text-amber-400 fill-amber-400" : "text-border"}`}
-                    />
-                  ))}
+                <h3 className="text-sm font-bold leading-snug mb-2 line-clamp-2">{v.title}</h3>
+                <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+                  <span>{v.wordCount} 字</span>
+                  <span>{v.topicCount} 话题</span>
                 </div>
-              </div>
-              <h3 className="text-sm font-bold leading-snug mb-2 line-clamp-2">{v.title}</h3>
-              <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-                <span>{v.wordCount} 字</span>
-                <span>{v.topicCount} 话题</span>
-              </div>
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
 
-        {/* Row 2: Feed preview cards */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        {/* Row 2: Feed preview cards — engagement bar pinned to bottom */}
+        <div className="grid grid-cols-3 gap-4 mb-6 items-stretch">
           {versions.map((v, i) => (
             <motion.div
               key={v.id}
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
-              className="rounded-2xl border border-border/60 bg-white shadow-sm overflow-hidden"
+              className="rounded-2xl border border-border/60 bg-white shadow-sm overflow-hidden flex flex-col"
             >
               {/* Card header */}
-              <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/40">
+              <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/40 shrink-0">
                 <span className="text-[11px] text-muted-foreground">
-                  拟真发布预览 · 小红书 FEED 卡片角
+                  拟真发布预览 · 小红书 FEED 卡片
                 </span>
                 <button
                   onClick={() => toast.info("编辑功能即将上线")}
@@ -237,7 +232,7 @@ export default function CreateStep4Result() {
               </div>
 
               {/* Cover image placeholder */}
-              <div className="mx-4 mt-4 aspect-[4/3] rounded-xl bg-gradient-to-br from-secondary/80 to-secondary flex flex-col items-center justify-center border border-border/30">
+              <div className="mx-4 mt-4 shrink-0 aspect-[4/3] rounded-xl bg-gradient-to-br from-secondary/80 to-secondary flex flex-col items-center justify-center border border-border/30">
                 <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center mb-2">
                   <svg className="w-5 h-5 text-primary/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                     <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -249,14 +244,12 @@ export default function CreateStep4Result() {
                 <span className="text-[10px] text-muted-foreground/50 mt-0.5">支持上传或 AI 生成封面</span>
               </div>
 
-              {/* Content */}
-              <div className="px-4 py-3">
+              {/* Content — flex-1 keeps engagement bar at bottom */}
+              <div className="flex-1 flex flex-col px-4 py-3">
                 <h3 className="text-sm font-bold leading-snug mb-2">{v.title}</h3>
-                <div className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line line-clamp-[12]">
+                <div className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line line-clamp-[10]">
                   {v.body}
                 </div>
-
-                {/* Tags */}
                 <div className="flex flex-wrap gap-1 mt-3">
                   {v.tags.map((tag) => (
                     <span
@@ -267,9 +260,8 @@ export default function CreateStep4Result() {
                     </span>
                   ))}
                 </div>
-
-                {/* Engagement prediction */}
-                <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/30">
+                {/* Engagement stats — mt-auto pins it to bottom */}
+                <div className="mt-auto pt-3 border-t border-border/30 flex items-center justify-between">
                   <div className="flex items-center gap-4 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <Heart className="w-3.5 h-3.5" /> {v.metrics.predictLikes}
@@ -290,17 +282,12 @@ export default function CreateStep4Result() {
 
         {/* Row 3: AI Insight panels */}
         <div className="grid grid-cols-3 gap-4 mb-6">
-          {versions.map((v, i) => (
-            <div
-              key={v.id}
-              className="rounded-2xl border border-border/60 bg-white p-4 shadow-sm"
-            >
+          {versions.map((v) => (
+            <div key={v.id} className="rounded-2xl border border-border/60 bg-white p-4 shadow-sm">
               <div className="flex items-center gap-2 mb-3">
                 <BarChart3 className="w-4 h-4 text-primary" />
-                <span className="text-xs font-bold text-foreground">AI 洞察 · 编辑工具</span>
+                <span className="text-xs font-bold text-foreground">AI 洞察</span>
               </div>
-
-              {/* Metric grid */}
               <div className="grid grid-cols-2 gap-2.5 mb-3">
                 <MetricCard
                   icon={<TrendingUp className="w-3.5 h-3.5 text-primary" />}
@@ -327,8 +314,6 @@ export default function CreateStep4Result() {
                   color={v.metrics.riskWords > 0 ? "text-primary" : "text-emerald-500"}
                 />
               </div>
-
-              {/* Suggestion */}
               <div className="p-2.5 rounded-lg bg-secondary/50 text-[11px] text-muted-foreground leading-relaxed flex items-start gap-2">
                 <Sparkles className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
                 <span>{v.suggestion}</span>
@@ -337,118 +322,63 @@ export default function CreateStep4Result() {
           ))}
         </div>
 
-        {/* Row 4: Quick tweak bar (spans all columns) */}
-        <div className="rounded-2xl border border-border/60 bg-white p-5 shadow-sm">
-          <div className="flex items-start justify-between gap-6">
-            {/* Left: tweaks */}
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-4">
-                <Zap className="w-4 h-4 text-primary" />
-                <span className="text-sm font-bold">AI 快速微调</span>
+        {/* Action bar */}
+        <div className="rounded-2xl border border-border/60 bg-white shadow-sm px-5 py-4">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            {/* Left: navigation + selected versions */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate("/create/images")}
+                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                返回修改
+              </button>
+              <div className="w-px h-5 bg-border" />
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">已选</span>
+                <div className="flex gap-1.5">
+                  {versions.map((v, i) => (
+                    <button
+                      key={v.id}
+                      onClick={() => toggleVersion(i)}
+                      className={`text-xs font-bold px-2.5 py-1 rounded-full border transition-all ${
+                        selectedVersions.has(i)
+                          ? "bg-primary text-white border-primary"
+                          : "bg-white text-muted-foreground border-border hover:border-primary/40"
+                      }`}
+                    >
+                      {v.label}
+                    </button>
+                  ))}
+                </div>
+                <span className="text-xs text-muted-foreground">共 {selectedCount} 版</span>
               </div>
-
-              {/* Version tabs */}
-              <div className="flex gap-2 mb-4">
-                {versions.map((v, i) => (
-                  <button
-                    key={v.id}
-                    onClick={() => setTweakVersion(i)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium border transition-all ${
-                      tweakVersion === i
-                        ? "bg-foreground text-background border-foreground"
-                        : "bg-white text-foreground border-border hover:border-foreground/20"
-                    }`}
-                  >
-                    {v.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* Tweak buttons */}
-              <div className="flex flex-wrap gap-2">
-                {QUICK_TWEAKS.map((tweak) => (
-                  <button
-                    key={tweak}
-                    onClick={() => {
-                      if (tweak === "自定义") {
-                        setShowCustomInput(!showCustomInput);
-                      } else {
-                        toast.success(`正在对 V${tweakVersion + 1} 执行「${tweak}」`);
-                      }
-                    }}
-                    className="px-4 py-2.5 rounded-xl text-sm font-medium border border-border/60 bg-white hover:border-primary/20 hover:bg-primary/5 transition-all"
-                  >
-                    {tweak}
-                  </button>
-                ))}
-              </div>
-
-              {/* Custom tweak input */}
-              {showCustomInput && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  className="mt-3 flex gap-2"
-                >
-                  <input
-                    type="text"
-                    value={customTweak}
-                    onChange={(e) => setCustomTweak(e.target.value)}
-                   placeholder="输入自定义微调指令，如 加入更多 emoji"
-                    className="flex-1 px-4 py-2.5 rounded-xl border border-border/60 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all placeholder:text-muted-foreground/50"
-                  />
-                  <Button
-                    size="sm"
-                    className="bg-primary hover:bg-primary/90 text-white px-4"
-                    onClick={() => {
-                      if (customTweak.trim()) {
-                        toast.success(`正在对 V${tweakVersion + 1} 执行自定义微调`);
-                        setCustomTweak("");
-                      }
-                    }}
-                  >
-                    执行
-                  </Button>
-                </motion.div>
-              )}
             </div>
 
             {/* Right: action buttons */}
-            <div className="shrink-0 w-56 space-y-2.5">
-              <button
-                onClick={() => toast.info("再生成一版（消耗 1 额度）")}
-                className="w-full text-left px-4 py-2.5 rounded-xl border border-primary/20 text-sm font-medium text-primary hover:bg-primary/5 transition-colors"
-              >
-                再生成一版
-                <span className="text-[11px] text-primary/60 ml-1">（消耗 1 额度）</span>
-              </button>
+            <div className="flex items-center gap-2.5">
               <button
                 onClick={generateNotes}
-                className="w-full text-left px-4 py-2.5 rounded-xl border border-primary/20 text-sm font-medium text-primary hover:bg-primary/5 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl border border-border/60 bg-white text-sm font-medium text-foreground hover:border-foreground/20 hover:bg-secondary/40 transition-all"
               >
+                <RefreshCw className="w-3.5 h-3.5" />
                 重新生成
-                <span className="text-[11px] text-primary/60 ml-1">（消耗 2 额度）</span>
               </button>
-              <Button
-                className="w-full bg-primary hover:bg-primary/90 text-white shadow-md shadow-primary/20"
-                onClick={() => toast.success("已加入发布队列")}
-              >
-                <Send className="w-4 h-4 mr-1.5" />
-                定时发布到小红书
-              </Button>
               <button
                 onClick={() => toast.success("已保存为草稿")}
-                className="w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors py-1"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl border border-border/60 bg-white text-sm font-medium text-foreground hover:border-foreground/20 hover:bg-secondary/40 transition-all"
               >
-                或 保存为草稿
+                <Save className="w-3.5 h-3.5" />
+                保存草稿
               </button>
-              <button
-                onClick={() => navigate("/create/images")}
-                className="w-full flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors py-1"
+              <Button
+                className="bg-primary hover:bg-primary/90 text-white shadow-md shadow-primary/20 px-5"
+                onClick={() => toast.success(`已将 ${selectedCount} 版笔记加入发布队列`)}
               >
-                <ArrowLeft className="w-3 h-3" />
-                返回修改策略
-              </button>
+                <Send className="w-4 h-4 mr-1.5" />
+                发布到小红书
+              </Button>
             </div>
           </div>
         </div>

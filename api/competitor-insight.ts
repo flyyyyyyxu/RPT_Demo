@@ -9,8 +9,26 @@ function json(data: unknown, status = 200): Response {
   });
 }
 
+function sanitizeJson(text: string): string {
+  return (
+    text
+      // strip markdown fences
+      .replace(/```json\s*/gi, "")
+      .replace(/```\s*/g, "")
+      // Chinese/curly quotes → straight quotes
+      .replace(/[\u201c\u201d\u2018\u2019\u300c\u300d\uff02]/g, '"')
+      // Chinese colon → ASCII colon
+      .replace(/\uff1a/g, ":")
+      // Chinese comma → ASCII comma
+      .replace(/\uff0c/g, ",")
+      // remove trailing commas before } or ]
+      .replace(/,\s*([}\]])/g, "$1")
+      .trim()
+  );
+}
+
 function extractJsonArray(text: string): any[] {
-  let s = text.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+  const s = sanitizeJson(text);
   const start = s.indexOf("[");
   const end = s.lastIndexOf("]");
   if (start === -1 || end === -1 || end <= start) {
