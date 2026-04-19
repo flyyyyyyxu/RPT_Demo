@@ -1,48 +1,67 @@
 /*
  * Step 2: 内容策略设置
- * Changes from requirements:
- * - 5.1 新增笔记类型：避坑指南、对比评测
- * - 5.2 新增"标题风格"维度
- * - 5.3 语气风格改为：闺蜜安利感 / 素人真实感 / 专业测评感 / 搞笑吐槽感
- * - 5.4 "叙述视角" → "文章样式"：痛点式 / 反转式 / 数字式 / 疑问悬念式
- * - 5.5 文章热度拆为：情绪浓度 + 节奏感
- * - 5.6 Preview 预览标题和开头
- * - 5.7 竞品洞察未采纳点可框选+一键融入
+ * Includes strategy selection, custom strategy notes, recommended strategy placeholder,
+ * preview title/opening, and selectable competitor insights.
  */
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import {
   ArrowLeft,
   ArrowRight,
-  Sparkles,
   Eye,
   Search,
   Zap,
-  CheckCircle2,
-  AlertCircle,
-  XCircle,
   Plus,
 } from "lucide-react";
 import CreateLayout from "@/components/create/CreateLayout";
 import { useCreateContext, type InsightItem } from "@/contexts/CreateContext";
+import { FALLBACK_STRATEGY } from "@/config/contentStrategy";
 import { toast } from "sonner";
 
 const NOTE_TYPES = [
-  { id: "种草推荐", title: "种草推荐", desc: "突出产品利益与使用场景，适合新品曝光、种草首发。" },
-  { id: "真实体验", title: "真实体验", desc: "以第一人称分享使用感受，信任感更高，适合复购种草。" },
-  { id: "干货科普", title: "干货科普", desc: "用知识或成分对比切入，再自然带出商品，适合成分党人群。" },
-  { id: "避坑指南", title: "避坑指南", desc: "从踩坑经验出发，反向推荐产品，可信度高，适合决策期用户。" },
-  { id: "对比评测", title: "对比评测", desc: "横向对比多款产品，突出自家优势，适合竞品替代场景。" },
+  { id: "直接种草", title: "直接种草", desc: "直接突出产品亮点、适合人群和购买理由，适合快速推荐与新品曝光。" },
+  { id: "真实分享", title: "真实分享", desc: "从个人使用感受和真实体验出发，更像用户自然分享，适合建立信任感。" },
+  { id: "场景安利", title: "场景安利", desc: "从具体使用场景切入，自然带出产品，适合宠物、家居、穿搭、礼物等品类。" },
+  { id: "攻略测评", title: "攻略测评", desc: "围绕功能、差异、优缺点或选购建议展开，适合帮助用户做判断。" },
+  { id: "话题共鸣", title: "话题共鸣", desc: "从情绪、态度、身份认同或生活方式切入，适合容易引发共鸣的内容。" },
 ];
 
-const TONE_OPTIONS = ["闺蜜安利感", "素人真实感", "专业测评感", "搞笑吐槽感"];
-const TITLE_STYLE_OPTIONS = ["数字清单型", "情绪共鸣型", "悬念反转型", "直接利益型"];
-const ARTICLE_STYLE_OPTIONS = ["痛点式", "反转式", "数字式", "疑问悬念式"];
+const TONE_OPTIONS = [
+  { id: "朋友安利感", desc: "像朋友真心推荐，轻松亲近，不刻意推销。" },
+  { id: "真实自述感", desc: "像自己用过后的真实分享，更有生活感。" },
+  { id: "专业判断感", desc: "表达更理性清楚，适合讲依据和判断。" },
+  { id: "轻松有梗感", desc: "更活泼有记忆点，适合年轻化表达。" },
+  { id: "温柔治愈感", desc: "偏生活方式和情绪价值，氛围更柔和。" },
+];
+const TITLE_STYLE_OPTIONS = [
+  { id: "结果种草型", desc: "直接表达值得买、很好用、买对了。" },
+  { id: "场景代入型", desc: "从使用场景切入，让用户快速代入。" },
+  { id: "情绪共鸣型", desc: "突出“这说的不就是我”的感觉。" },
+  { id: "信息决策型", desc: "更适合总结、测评、对比、避坑。" },
+  { id: "反差悬念型", desc: "通过意外感或反差感提升点击欲。" },
+];
+const BODY_STYLE_OPTIONS = [
+  { id: "亮点展开式", desc: "先给推荐结论，再展开亮点与适合人群。" },
+  { id: "体验叙述式", desc: "按购买原因、使用感受、推荐理由展开。" },
+  { id: "场景带入式", desc: "先写场景画面，再自然引出商品。" },
+  { id: "对比分析式", desc: "通过差异、优缺点和适合对象展开说明。" },
+  { id: "情绪共振式", desc: "从感受、吐槽或共鸣切入，再引出产品。" },
+];
 const STRATEGY_TEMPLATES = ["新品首发", "双 11 冲量", "老客复购", "专业人群"];
+const CUSTOM_FIELD_MAX_LENGTH = 50;
+
+// Ultimate UI fallback used when the user navigated straight to Step2 without
+// going through Step1 (so context.recommendedStrategy is null). Values come
+// from FALLBACK_STRATEGY so fallback logic stays in one place.
+const UI_FALLBACK_STRATEGY = FALLBACK_STRATEGY;
+
+const hasOption = (options: Array<{ id: string }>, value: string) =>
+  options.some((option) => option.id === value);
 
 // Mock insights from Step1 (would come from context in real app)
 const DEFAULT_INSIGHTS: InsightItem[] = [
@@ -53,17 +72,87 @@ const DEFAULT_INSIGHTS: InsightItem[] = [
   { label: "价格锚点", detail: "「60块一大瓶」", status: "pending" },
 ];
 
+// Preview templates: driven entirely by productInfo so output adapts to any category.
+// Title varies by titleStyle; opening = hook(bodyStyle) + tail(noteType) — 5×5 combinations.
+type PreviewCtx = {
+  name: string;
+  point1: string;
+  point2: string;
+  audience: string;
+  audience2: string;
+};
+
+const buildPreviewCtx = (p: {
+  name: string;
+  sellingPoints: string[];
+  targetAudience: string[];
+}): PreviewCtx => {
+  const point1 = p.sellingPoints[0] || "核心卖点";
+  const audience = p.targetAudience[0] || "需要的朋友";
+  return {
+    name: p.name || "这款产品",
+    point1,
+    point2: p.sellingPoints[1] || point1,
+    audience,
+    audience2: p.targetAudience[1] || audience,
+  };
+};
+
+const TITLE_TEMPLATES: Record<string, (c: PreviewCtx) => string> = {
+  "结果种草型": (c) => `${c.name}真的买对了，${c.point1}这点太加分`,
+  "场景代入型": (c) => `每次${c.audience}日常，我都会先想到${c.name}`,
+  "情绪共鸣型": (c) => `这说的不就是${c.audience}吗？${c.name}真的太懂了`,
+  "信息决策型": (c) => `${c.name}到底适合谁？这 3 点先看清楚`,
+  "反差悬念型": (c) => `本来没抱期待，结果被${c.name}的${c.point1}拿捏了`,
+};
+
+const OPENING_HOOKS: Record<string, (c: PreviewCtx) => string> = {
+  "亮点展开式": (c) =>
+    `先说结论：${c.name}值得冲，核心就是 <strong>${c.point1}</strong>。`,
+  "体验叙述式": (c) =>
+    `最近一直在用 ${c.name}，说说真实感受——<strong>${c.point1}</strong> 这点确实打动了我。`,
+  "场景带入式": (c) =>
+    `想象一下${c.audience}的日常，需要一点恰到好处的 <strong>${c.point1}</strong>，${c.name}就很自然地出现了。`,
+  "对比分析式": (c) =>
+    `把几款热门放在一起对比，${c.name}在 <strong>${c.point1}</strong> 这点上明显更稳。`,
+  "情绪共振式": (c) =>
+    `有时候买东西不是看参数，是那种"终于懂我了"的感觉——${c.name}给我的第一印象就是 <strong>${c.point1}</strong>。`,
+};
+
+const OPENING_TAILS: Record<string, (c: PreviewCtx) => string> = {
+  "直接种草": (c) => `我会直接推荐给${c.audience}，理由就是这么简单——`,
+  "真实分享": (c) => `不是硬夸，是真觉得它把${c.point2}做得挺舒服。`,
+  "场景安利": (c) => `特别是${c.audience}常遇到的那些场景，它都接得住。`,
+  "攻略测评": (c) => `如果你也在纠结怎么选，${c.name}的几个关键点值得先看清楚。`,
+  "话题共鸣": (c) => `相信不止我一个${c.audience}会被戳中，这种感觉真的很难得。`,
+};
+
 export default function CreateStep2() {
   const [, navigate] = useLocation();
   const { productInfo, contentStrategy, setContentStrategy } = useCreateContext();
 
-  const [noteType, setNoteType] = useState(contentStrategy.noteType);
-  const [tone, setTone] = useState(contentStrategy.toneStyle);
-  const [titleStyle, setTitleStyle] = useState(contentStrategy.titleStyle);
-  const [articleStyle, setArticleStyle] = useState(contentStrategy.articleStyle);
+  // Prefer the strategy recommended from Step1; fall back to global defaults
+  // when user navigates directly to Step2 with no recommendation in context.
+  const activeRecommended = contentStrategy.recommendedStrategy ?? UI_FALLBACK_STRATEGY;
+
+  const initialBodyStyle = contentStrategy.bodyStyle || contentStrategy.articleStyle;
+  const [noteType, setNoteType] = useState(
+    hasOption(NOTE_TYPES, contentStrategy.noteType) ? contentStrategy.noteType : activeRecommended.noteType
+  );
+  const [tone, setTone] = useState(
+    hasOption(TONE_OPTIONS, contentStrategy.toneStyle) ? contentStrategy.toneStyle : activeRecommended.toneStyle
+  );
+  const [titleStyle, setTitleStyle] = useState(
+    hasOption(TITLE_STYLE_OPTIONS, contentStrategy.titleStyle) ? contentStrategy.titleStyle : activeRecommended.titleStyle
+  );
+  const [bodyStyle, setBodyStyle] = useState(
+    hasOption(BODY_STYLE_OPTIONS, initialBodyStyle) ? initialBodyStyle : activeRecommended.bodyStyle
+  );
+  const [customHighlights, setCustomHighlights] = useState(contentStrategy.customHighlights);
+  const [customToneNotes, setCustomToneNotes] = useState(contentStrategy.customToneNotes);
+  const [customAvoidances, setCustomAvoidances] = useState(contentStrategy.customAvoidances);
   const [emotionLevel, setEmotionLevel] = useState(contentStrategy.emotionLevel);
   const [rhythmLevel, setRhythmLevel] = useState(contentStrategy.rhythmLevel);
-  const [genCount, setGenCount] = useState(contentStrategy.generateCount);
   const [autoTags, setAutoTags] = useState(contentStrategy.autoTags);
 
   // Competitor insights from Step1 or defaults
@@ -71,45 +160,44 @@ export default function CreateStep2() {
     productInfo.competitorInsight?.items ?? DEFAULT_INSIGHTS
   );
 
-  // Generate preview title + opening based on current settings
-  const previewTitle = useMemo(() => {
-    const name = productInfo.name || "这款产品";
-    const point = productInfo.sellingPoints.length > 0 ? productInfo.sellingPoints[0] : "好用";
+  // Keep insights in sync when user goes back to Step1 and regenerates.
+  useEffect(() => {
+    if (productInfo.competitorInsight?.items) {
+      setInsights(productInfo.competitorInsight.items);
+    }
+  }, [productInfo.competitorInsight]);
 
-    if (titleStyle === "数字清单型") return `5 个理由告诉你为什么${name}值得入`;
-    if (titleStyle === "悬念反转型") return `被骂了三年的${point}洁面，我居然真香了？`;
-    if (titleStyle === "直接利益型") return `${point}又不拔干！这瓶洁面${productInfo.targetAudience[0] || "敏感肌"}闭眼冲`;
-    // 情绪共鸣型 default
-    return `姐妹们！这瓶洁面真的是我今年最爱没有之一 😭`;
+  // Preview driven by productInfo + selected styles. Templates live outside the component.
+  const previewTitle = useMemo(() => {
+    const ctx = buildPreviewCtx(productInfo);
+    const fn = TITLE_TEMPLATES[titleStyle];
+    return fn ? fn(ctx) : `${ctx.name}，${ctx.point1}，值得认识一下`;
   }, [titleStyle, productInfo]);
 
   const previewOpening = useMemo(() => {
-    const audience = productInfo.targetAudience.length > 0 ? productInfo.targetAudience[0] : "";
-    const point = productInfo.sellingPoints.length > 0 ? productInfo.sellingPoints[0] : "";
-
-    if (noteType === "种草推荐") {
-      return `作为${audience || "敏感肌"} + 学生党，我对洁面真的挑到不行…最近用的这瓶 <strong>${point}又不拔干</strong> 的洁面了，${audience ? audience + "闭眼冲" : "闭眼冲"}——`;
-    } else if (noteType === "真实体验") {
-      return `用了一个月的 ${productInfo.name}，说说我的真实感受。作为${audience || "敏感肌"}，<strong>洗完脸不紧绷</strong>这点真的太重要了……`;
-    } else if (noteType === "避坑指南") {
-      return `踩了无数坑之后，终于找到了真正适合${audience || "敏感肌"}的洁面。今天把我的<strong>血泪避坑经验</strong>分享给大家——`;
-    } else if (noteType === "对比评测") {
-      return `把市面上最火的 3 款氨基酸洁面放在一起对比了一下，结果让我意外的是<strong>${productInfo.name}</strong>居然……`;
-    } else {
-      return `氨基酸 vs 皂基洁面，到底该怎么选？今天就来聊聊${audience ? "适合" + audience + "的" : ""}洁面成分，顺便分享一款我最近在用的 <strong>${point}</strong> 洁面——`;
-    }
-  }, [noteType, productInfo]);
+    const ctx = buildPreviewCtx(productInfo);
+    const hook = OPENING_HOOKS[bodyStyle]?.(ctx);
+    const tail = OPENING_TAILS[noteType]?.(ctx);
+    if (hook && tail) return `${hook} ${tail}`;
+    return hook || tail || `${ctx.name}，${ctx.point1}，值得认识一下。`;
+  }, [noteType, bodyStyle, productInfo]);
 
   const handleNext = () => {
     setContentStrategy({
       noteType,
       toneStyle: tone,
       titleStyle,
-      articleStyle,
+      articleStyle: bodyStyle,
+      bodyStyle,
+      customHighlights,
+      customToneNotes,
+      customAvoidances,
       emotionLevel,
       rhythmLevel,
-      generateCount: genCount,
+      generateCount: contentStrategy.generateCount,
       autoTags,
+      selectedInsights: insights.filter((i) => i.status === "adopted"),
+      recommendedStrategy: contentStrategy.recommendedStrategy,
     });
     navigate("/create/images");
   };
@@ -131,13 +219,13 @@ export default function CreateStep2() {
         <div className="mb-8">
           <h1 className="text-2xl font-bold tracking-tight mb-1.5">内容策略设置</h1>
           <p className="text-sm text-muted-foreground">
-            选择笔记形态、语气与结构，AI 将据此撰写正文。可随时返回上一步修改商品信息。
+            已根据商品信息，预选适合该商品的表达方式，可手动调整，AI 将据此生成专业标题和正文。可随时返回上一步修改商品信息。
           </p>
         </div>
 
         <div className="grid lg:grid-cols-5 gap-8">
           {/* Left: Config (3/5) */}
-          <div className="lg:col-span-3 space-y-7">
+          <div className="lg:col-span-3 space-y-6">
             {/* Note type */}
             <div>
               <label className="text-sm font-semibold text-foreground mb-3 block">
@@ -174,34 +262,31 @@ export default function CreateStep2() {
               </div>
             </div>
 
-            {/* Tone style */}
+            {/* Title style */}
             <div>
-              <label className="text-sm font-semibold text-foreground mb-3 block">语气风格</label>
-              <div className="flex flex-wrap gap-2">
-                {TONE_OPTIONS.map((opt) => (
+              <label className="text-sm font-semibold text-foreground mb-3 block">标题风格</label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {TITLE_STYLE_OPTIONS.map((opt) => (
                   <ChoiceChip
-                    key={opt}
-                    label={opt}
-                    selected={tone === opt}
-                    onClick={() => setTone(opt)}
+                    key={opt.id}
+                    label={opt.id}
+                    selected={titleStyle === opt.id}
+                    onClick={() => setTitleStyle(opt.id)}
                   />
                 ))}
               </div>
             </div>
 
-            {/* Title style - NEW */}
+            {/* Tone style */}
             <div>
-              <label className="text-sm font-semibold text-foreground mb-3 block">
-                标题风格
-                <span className="text-[11px] font-normal text-muted-foreground/60 ml-2">影响标题的写法和吸引力</span>
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {TITLE_STYLE_OPTIONS.map((opt) => (
+              <label className="text-sm font-semibold text-foreground mb-3 block">语气风格</label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {TONE_OPTIONS.map((opt) => (
                   <ChoiceChip
-                    key={opt}
-                    label={opt}
-                    selected={titleStyle === opt}
-                    onClick={() => setTitleStyle(opt)}
+                    key={opt.id}
+                    label={opt.id}
+                    selected={tone === opt.id}
+                    onClick={() => setTone(opt.id)}
                   />
                 ))}
               </div>
@@ -209,19 +294,46 @@ export default function CreateStep2() {
 
             {/* Article style (was 叙述视角) */}
             <div>
-              <label className="text-sm font-semibold text-foreground mb-3 block">
-                文章样式
-                <span className="text-[11px] font-normal text-muted-foreground/60 ml-2">影响正文的叙事结构</span>
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {ARTICLE_STYLE_OPTIONS.map((opt) => (
+              <label className="text-sm font-semibold text-foreground mb-3 block">文章样式</label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {BODY_STYLE_OPTIONS.map((opt) => (
                   <ChoiceChip
-                    key={opt}
-                    label={opt}
-                    selected={articleStyle === opt}
-                    onClick={() => setArticleStyle(opt)}
+                    key={opt.id}
+                    label={opt.id}
+                    selected={bodyStyle === opt.id}
+                    onClick={() => setBodyStyle(opt.id)}
                   />
                 ))}
+              </div>
+            </div>
+
+            {/* Custom strategy notes */}
+            <div className="rounded-2xl border border-border/60 bg-white p-5 shadow-sm">
+              <div className="mb-4">
+                <label className="text-sm font-semibold text-foreground block">自定义补充（可选）</label>
+                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                  如果默认选项不完全符合你的想法，可以补充你希望强调的表达重点。系统会在生成标题和正文时参考这些关键词。
+                </p>
+              </div>
+              <div className="space-y-3.5">
+                <CustomStrategyInput
+                  label="想强调的感觉 / 卖点"
+                  value={customHighlights}
+                  onChange={setCustomHighlights}
+                  placeholder="如：可爱、松弛感、送礼有面子、很适合冬天遛狗"
+                />
+                <CustomStrategyInput
+                  label="希望呈现的表达氛围"
+                  value={customToneNotes}
+                  onChange={setCustomToneNotes}
+                  placeholder="如：像养狗人之间的暗号、像朋友聊天、不要太像广告"
+                />
+                <CustomStrategyInput
+                  label="不希望出现的表达方式"
+                  value={customAvoidances}
+                  onChange={setCustomAvoidances}
+                  placeholder="如：不要太夸张、不要太专业说教、不要像直播话术"
+                />
               </div>
             </div>
 
@@ -271,56 +383,6 @@ export default function CreateStep2() {
               </div>
             </div>
 
-            {/* Generate count + Auto tags */}
-            <div className="grid sm:grid-cols-2 gap-6">
-              <div>
-                <label className="text-sm font-semibold text-foreground mb-3 block">生成数量</label>
-                <div className="flex gap-2">
-                  {[1, 2, 3].map((n) => (
-                    <button
-                      key={n}
-                      onClick={() => setGenCount(n)}
-                      className={`flex-1 py-3 rounded-xl text-sm font-bold border-2 transition-all ${
-                        genCount === n
-                          ? "border-primary bg-primary text-white shadow-md shadow-primary/20"
-                          : "border-border/60 bg-white text-foreground hover:border-primary/20"
-                      }`}
-                    >
-                      {n}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-[11px] text-muted-foreground/60 mt-2">
-                  每版用一次额度，并行产出。
-                </p>
-              </div>
-              <div>
-                <label className="text-sm font-semibold text-foreground mb-3 block">是否加入话题标签</label>
-                <div className="flex items-center justify-between p-4 rounded-xl border border-border/60 bg-white">
-                  <span className="text-sm">自动推荐热门标签</span>
-                  <Switch checked={autoTags} onCheckedChange={setAutoTags} />
-                </div>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center justify-between pt-4">
-              <Button
-                variant="outline"
-                className="bg-white"
-                onClick={() => navigate("/create")}
-              >
-                <ArrowLeft className="w-4 h-4 mr-1.5" />
-                返回上一步
-              </Button>
-              <Button
-                className="bg-primary hover:bg-primary/90 text-white shadow-md shadow-primary/20 px-6"
-                onClick={handleNext}
-              >
-                下一步：图片生成
-                <ArrowRight className="w-4 h-4 ml-1.5" />
-              </Button>
-            </div>
           </div>
 
           {/* Right: Preview + Insight (2/5) */}
@@ -328,7 +390,7 @@ export default function CreateStep2() {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.4, delay: 0.2 }}
-            className="lg:col-span-2 space-y-5"
+            className="lg:col-span-2 space-y-5 lg:pt-8"
           >
             {/* Live preview - now shows title + opening */}
             <div className="rounded-2xl border border-border/60 bg-white p-5 shadow-sm">
@@ -354,11 +416,22 @@ export default function CreateStep2() {
                 </div>
               </div>
               <div className="flex flex-wrap gap-1.5 mt-3">
-                {[noteType, tone, titleStyle, articleStyle].map((tag) => (
+                {[noteType, tone, titleStyle, bodyStyle].map((tag) => (
                   <span key={tag} className="text-[10px] px-2 py-0.5 rounded-md bg-secondary text-muted-foreground">
                     {tag}
                   </span>
                 ))}
+              </div>
+            </div>
+
+            {/* Auto tags */}
+            <div className="rounded-2xl border border-border/60 bg-white p-4 shadow-sm">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <div className="text-sm font-semibold text-foreground">是否加入话题标签</div>
+                  <p className="text-xs text-muted-foreground mt-1">自动推荐热门标签</p>
+                </div>
+                <Switch checked={autoTags} onCheckedChange={setAutoTags} />
               </div>
             </div>
 
@@ -433,6 +506,25 @@ export default function CreateStep2() {
                 ))}
               </div>
             </div>
+
+            {/* Actions */}
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                variant="outline"
+                className="bg-white"
+                onClick={() => navigate("/create")}
+              >
+                <ArrowLeft className="w-4 h-4 mr-1.5" />
+                返回上一步
+              </Button>
+              <Button
+                className="bg-primary hover:bg-primary/90 text-white shadow-md shadow-primary/20"
+                onClick={handleNext}
+              >
+                下一步：图片生成
+                <ArrowRight className="w-4 h-4 ml-1.5" />
+              </Button>
+            </div>
           </motion.div>
         </div>
       </div>
@@ -454,13 +546,43 @@ function ChoiceChip({
   return (
     <button
       onClick={onClick}
-      className={`px-4 py-2 rounded-full text-sm font-medium border transition-all duration-200 ${
+      className={`h-10 px-3 rounded-xl text-sm font-semibold border transition-all duration-200 ${
         selected
           ? "bg-primary/10 text-primary border-primary/25 shadow-sm"
-          : "bg-white text-foreground/60 border-border hover:border-primary/20 hover:bg-primary/5"
+          : "bg-white text-foreground/70 border-border hover:border-primary/20 hover:bg-primary/5"
       }`}
     >
       {label}
     </button>
+  );
+}
+
+function CustomStrategyInput({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+}) {
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1.5">
+        <label className="text-xs font-medium text-foreground">{label}</label>
+        <span className="text-[10px] text-muted-foreground">
+          {value.length}/{CUSTOM_FIELD_MAX_LENGTH}
+        </span>
+      </div>
+      <Input
+        value={value}
+        maxLength={CUSTOM_FIELD_MAX_LENGTH}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className="h-10 bg-secondary/30 border-border/60 text-sm"
+      />
+    </div>
   );
 }

@@ -4,6 +4,7 @@
  * Persists form state so users can go back/forward without losing data.
  */
 import { createContext, useContext, useState, type ReactNode } from "react";
+import type { RecommendedStrategy } from "@/types/contentStrategy";
 
 export interface ProductInfo {
   name: string;
@@ -15,6 +16,11 @@ export interface ProductInfo {
   importFromLibrary: boolean;
   productImages: string[]; // uploaded product image URLs
   competitorInsight: CompetitorInsight | null;
+  // Optional semantic fields consumed by recommendContentStrategy.
+  // Not yet bound to a Step1 input — kept optional for forward compatibility.
+  category?: string;
+  subcategory?: string;
+  usageScenarios?: string[];
 }
 
 export interface CompetitorInsight {
@@ -33,10 +39,16 @@ export interface ContentStrategy {
   toneStyle: string;
   titleStyle: string;
   articleStyle: string;
+  bodyStyle: string;
+  customHighlights: string;
+  customToneNotes: string;
+  customAvoidances: string;
   emotionLevel: number;  // 情绪浓度: 0-100
   rhythmLevel: number;   // 节奏感: 0-100
   generateCount: number;
   autoTags: boolean;
+  selectedInsights: InsightItem[];
+  recommendedStrategy: RecommendedStrategy | null;
 }
 
 export interface ImageGenConfig {
@@ -90,14 +102,20 @@ const defaultProductInfo: ProductInfo = {
 };
 
 const defaultContentStrategy: ContentStrategy = {
-  noteType: "种草推荐",
-  toneStyle: "闺蜜安利感",
-  titleStyle: "情绪共鸣型",
-  articleStyle: "痛点式",
+  noteType: "场景安利",
+  toneStyle: "温柔治愈感",
+  titleStyle: "场景代入型",
+  articleStyle: "场景带入式",
+  bodyStyle: "场景带入式",
+  customHighlights: "",
+  customToneNotes: "",
+  customAvoidances: "",
   emotionLevel: 50,
   rhythmLevel: 50,
   generateCount: 2,
   autoTags: true,
+  selectedInsights: [],
+  recommendedStrategy: null,
 };
 
 const defaultImageConfig: ImageGenConfig = {

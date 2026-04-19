@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import CreateLayout from "@/components/create/CreateLayout";
 import { useCreateContext, type InsightItem } from "@/contexts/CreateContext";
+import { recommendContentStrategy } from "@/utils/recommendStrategy";
 import { toast } from "sonner";
 
 const SELLING_POINT_PRESETS = [
@@ -42,7 +43,7 @@ const AUDIENCE_PRESETS = [
 
 export default function CreateStep1() {
   const [, navigate] = useLocation();
-  const { productInfo, setProductInfo } = useCreateContext();
+  const { productInfo, setProductInfo, contentStrategy, setContentStrategy } = useCreateContext();
 
   const [name, setName] = useState(productInfo.name);
   const [sellingPoints, setSellingPoints] = useState<string[]>(productInfo.sellingPoints);
@@ -136,7 +137,43 @@ export default function CreateStep1() {
       importFromLibrary: importMode,
       productImages,
       competitorInsight: insightGenerated ? { generated: true, items: insights } : null,
+      category: productInfo.category,
+      subcategory: productInfo.subcategory,
+      usageScenarios: productInfo.usageScenarios,
     });
+
+    // Recommend a content strategy based on current product info. Only overwrite
+    // the user's Step2 picks when the recommendation actually changed — this lets
+    // users go back to Step1 without losing manual edits they made on Step2.
+    const recommended = recommendContentStrategy({
+      category: productInfo.category,
+      subcategory: productInfo.subcategory,
+      productName: name,
+      sellingPoints,
+      targetAudience: audience,
+      usageScenarios: productInfo.usageScenarios,
+      priceRange,
+    });
+    const prev = contentStrategy.recommendedStrategy;
+    const recommendationChanged =
+      !prev ||
+      prev.noteType !== recommended.noteType ||
+      prev.toneStyle !== recommended.toneStyle ||
+      prev.titleStyle !== recommended.titleStyle ||
+      prev.bodyStyle !== recommended.bodyStyle;
+
+    setContentStrategy({
+      ...contentStrategy,
+      recommendedStrategy: recommended,
+      ...(recommendationChanged && {
+        noteType: recommended.noteType,
+        toneStyle: recommended.toneStyle,
+        titleStyle: recommended.titleStyle,
+        articleStyle: recommended.bodyStyle,
+        bodyStyle: recommended.bodyStyle,
+      }),
+    });
+
     navigate("/create/strategy");
   };
 

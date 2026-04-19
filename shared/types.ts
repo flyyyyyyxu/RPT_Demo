@@ -30,9 +30,14 @@ export interface GenerateNotesRequest {
     toneStyle: string;
     titleStyle: string;
     articleStyle: string;
+    bodyStyle: string;
+    customHighlights: string;
+    customToneNotes: string;
+    customAvoidances: string;
     emotionLevel: number;
     rhythmLevel: number;
   };
+  selectedInsights?: CompetitorInsightItem[];
 }
 
 export interface GenerateNotesResponse {

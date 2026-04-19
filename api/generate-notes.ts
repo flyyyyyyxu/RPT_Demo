@@ -48,6 +48,7 @@ export default async function handler(req: any, res: any) {
     if (!apiKey) return res.status(500).json({ error: "MINIMAX_API_KEY not configured" });
 
     const { productInfo, contentStrategy, competitorInsights = [], selectedInsights = [] }: GenerateNotesRequest & any = req.body;
+    const bodyStyle = contentStrategy.bodyStyle || contentStrategy.articleStyle || "";
 
     const usableInsights = Array.isArray(selectedInsights) && selectedInsights.length > 0
       ? selectedInsights
@@ -67,7 +68,7 @@ export default async function handler(req: any, res: any) {
       : "（未提供竞品洞察）";
 
     const dynamicVersionRules = [
-      `- V1：严格以用户选择为主，组合“${contentStrategy.toneStyle} + ${contentStrategy.noteType} + ${contentStrategy.titleStyle} + ${contentStrategy.articleStyle}”生成主版本，作为最贴近用户预期的成稿`,
+      `- V1：严格以用户选择为主，组合“${contentStrategy.toneStyle} + ${contentStrategy.noteType} + ${contentStrategy.titleStyle} + ${bodyStyle}”生成主版本，作为最贴近用户预期的成稿`,
       `- V2：在不脱离用户选择的前提下，优先吸收竞品洞察里最值得借鉴的一类表达方式，强化真实感、说服力或转化效率，形成第二种写法，不要写成固定的“干货科普风”`,
       `- V3：基于另一种差异化表达路径生成，例如切换叙述视角、开头钩子、场景结构、情绪浓度或节奏感，形成第三种写法，不要写成固定的“真实日记风”`,
       `- 三个版本都必须围绕同一商品事实，不得捏造功效、成分实验、用户评价、品牌背景或价格优惠信息`,
@@ -93,7 +94,10 @@ export default async function handler(req: any, res: any) {
 笔记类型：${contentStrategy.noteType}
 语气风格：${contentStrategy.toneStyle}
 标题风格：${contentStrategy.titleStyle}
-正文风格：${contentStrategy.articleStyle}
+正文风格：${bodyStyle}
+自定义强调：${contentStrategy.customHighlights || "无"}
+自定义氛围：${contentStrategy.customToneNotes || "无"}
+避免表达：${contentStrategy.customAvoidances || "无"}
 情绪浓度：${contentStrategy.emotionLevel}/100
 节奏感：${contentStrategy.rhythmLevel}/100
 

@@ -69,7 +69,11 @@ export default function CreateStep4Result() {
       const res = await fetch("/api/generate-notes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productInfo, contentStrategy }),
+        body: JSON.stringify({
+          productInfo,
+          contentStrategy,
+          selectedInsights: contentStrategy.selectedInsights ?? [],
+        }),
       });
       const data = await res.json();
       if (!res.ok || data.error) throw new Error(data.error ?? "生成失败");
@@ -107,7 +111,7 @@ export default function CreateStep4Result() {
             />
           </div>
           <div className="flex gap-2 mt-2">
-            {["亲切种草", "干货科普", "真实日记"].map((s, i) => (
+            {["场景安利", "温柔治愈", "内容生成"].map((s, i) => (
               <motion.span
                 key={s}
                 initial={{ opacity: 0, y: 8 }}
@@ -141,6 +145,16 @@ export default function CreateStep4Result() {
   }
 
   const selectedCount = selectedVersions.size;
+  const currentBodyStyle = contentStrategy.bodyStyle || contentStrategy.articleStyle;
+  const strategyRows = [
+    ["笔记类型", contentStrategy.noteType],
+    ["语气风格", contentStrategy.toneStyle],
+    ["标题风格", contentStrategy.titleStyle],
+    ["文章样式", currentBodyStyle],
+    ["自定义强调", contentStrategy.customHighlights || "未填写"],
+    ["自定义氛围", contentStrategy.customToneNotes || "未填写"],
+    ["避免表达", contentStrategy.customAvoidances || "未填写"],
+  ];
 
   return (
     <CreateLayout currentStep={4}>
@@ -156,6 +170,24 @@ export default function CreateStep4Result() {
           <p className="text-sm text-muted-foreground">
             点击版本卡片可多选，查看 AI 洞察数据，选择最佳版本发布。
           </p>
+        </div>
+
+        {/* Strategy summary */}
+        <div className="rounded-2xl border border-border/60 bg-white p-5 shadow-sm mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Sparkles className="w-4 h-4 text-primary" />
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              当前内容策略
+            </span>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+            {strategyRows.map(([label, value]) => (
+              <div key={label} className="rounded-xl bg-secondary/40 border border-border/40 px-3 py-2.5">
+                <div className="text-[11px] text-muted-foreground mb-1">{label}</div>
+                <div className="text-sm font-semibold text-foreground leading-snug">{value}</div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Row 1: Version summary cards — multi-select */}
