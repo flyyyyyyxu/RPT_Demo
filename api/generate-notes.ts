@@ -45,7 +45,7 @@ export default async function handler(request: Request): Promise<Response> {
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: "MiniMax-Text-01",
+      model: "MiniMax-M2.7",
       messages: [
         {
           role: "system",
