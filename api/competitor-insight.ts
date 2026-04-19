@@ -1,24 +1,90 @@
 import type { CompetitorInsightRequest, CompetitorInsightResponse, CompetitorInsightItem } from "../shared/types";
 
+const STEP1_ANALYSIS_RULES = [
+  "主要分析竞品内容本身（用户痛点、爆款话术、情感锚点、内容结构）",
+  "少量分析竞品与我方商品的关系（差异化机会、可借鉴点）",
+  "每条洞察都要具体、可操作，直接指导文案创作",
+  "不要复述抓取状态、HTTP状态码、无法访问等技术提示",
+];
+
+const STEP1_OUTPUT_EXAMPLE =
+  '[{"label":"洞察类型","detail":"具体可操作的洞察（20-45字）"},...]';
+
 function sanitizeJson(text: string): string {
   return text
     .replace(/```json\s*/gi, "")
     .replace(/```\s*/g, "")
-    .replace(/[\u201c\u201d\u2018\u2019\u300c\u300d\uff02]/g, '"')
-    .replace(/\uff1a/g, ":")
-    .replace(/\uff0c/g, ",")
     .replace(/,\s*([}\]])/g, "$1")
     .trim();
 }
 
+function findArrayEnd(text: string, start: number): number {
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (ch === "\\") {
+        escaped = true;
+      } else if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (ch === '"') {
+      inString = true;
+    } else if (ch === "[") {
+      depth += 1;
+    } else if (ch === "]") {
+      depth -= 1;
+      if (depth === 0) return i;
+    }
+  }
+
+  return -1;
+}
+
+function parseJsonCandidate(text: string): any[] | null {
+  try {
+    const parsed = JSON.parse(text);
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    const normalized = text
+      .replace(/[\u201c\u201d\u2018\u2019\u300c\u300d\uff02]/g, '"')
+      .replace(/\uff1a/g, ":")
+      .replace(/\uff0c/g, ",")
+      .replace(/,\s*([}\]])/g, "$1");
+
+    try {
+      const parsed = JSON.parse(normalized);
+      return Array.isArray(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+}
+
 function extractJsonArray(text: string): any[] {
   const s = sanitizeJson(text);
-  const start = s.indexOf("[");
-  const end = s.lastIndexOf("]");
-  if (start === -1 || end === -1 || end <= start) {
-    throw new Error(`No JSON array found. Raw: ${s.slice(0, 300)}`);
+
+  for (let start = s.indexOf("["); start !== -1; start = s.indexOf("[", start + 1)) {
+    const next = s.slice(start + 1).search(/\S/);
+    if (next === -1 || s[start + 1 + next] !== "{") continue;
+
+    const end = findArrayEnd(s, start);
+    if (end === -1) continue;
+
+    const parsed = parseJsonCandidate(s.slice(start, end + 1));
+    if (parsed) return parsed;
   }
-  return JSON.parse(s.slice(start, end + 1));
+
+  throw new Error(`No valid JSON array found. Raw: ${s.slice(0, 300)}`);
 }
 
 function htmlToText(html: string): string {
@@ -46,16 +112,16 @@ async function fetchUrlContent(url: string): Promise<string> {
       },
       redirect: "follow",
     });
-    if (!res.ok) return `[无法访问，HTTP ${res.status}]`;
+    if (!res.ok) return `无法访问：HTTP ${res.status}`;
     const contentType = res.headers.get("content-type") ?? "";
     if (!contentType.includes("html") && !contentType.includes("text")) {
-      return "[非文本内容，跳过]";
+      return "非文本内容，跳过";
     }
     const html = await res.text();
     const text = htmlToText(html).slice(0, 2500);
-    return text || "[页面内容为空]";
+    return text || "页面内容为空";
   } catch (e: any) {
-    return `[抓取失败：${e.message}]`;
+    return `抓取失败：${e.message}`;
   }
 }
 
@@ -99,12 +165,10 @@ export default async function handler(req: any, res: any) {
 ${urlSection ? `【竞品内容】\n${urlSection}` : "（未提供竞品链接，请基于品类通用知识分析）"}
 
 分析要求：
-1. 主要分析竞品内容本身（用户痛点、爆款话术、情感锚点、内容结构）
-2. 少量分析竞品与我方商品的关系（差异化机会、可借鉴点）
-3. 每条洞察都要具体、可操作，直接指导文案创作
+${STEP1_ANALYSIS_RULES.map((rule, i) => `${i + 1}. ${rule}`).join("\n")}
 
 只返回JSON数组，不要任何其他文字：
-[{"label":"洞察类型","detail":"具体可操作的洞察（20-45字）"},...]
+${STEP1_OUTPUT_EXAMPLE}
 （共5条，label优先从：用户高频痛点/爆款话术/情感锚点/竞品差异/可借鉴结构/价格话术/场景共鸣 中选取）`;
 
     const mmRes = await fetch("https://api.minimax.chat/v1/chat/completions", {
