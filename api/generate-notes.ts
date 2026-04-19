@@ -2,19 +2,38 @@ import type { GenerateNotesRequest, GenerateNotesResponse, NoteVersion } from ".
 
 export const config = { runtime: "edge" };
 
+function json(data: unknown, status = 200): Response {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+// Extract a JSON array from text that may contain reasoning preamble or markdown fences
+function extractJsonArray(text: string): any[] {
+  // Strip markdown code fences
+  let s = text.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+  // Find the first [ and last ] to extract the array
+  const start = s.indexOf("[");
+  const end = s.lastIndexOf("]");
+  if (start === -1 || end === -1 || end <= start) {
+    throw new Error(`No JSON array found in response. Raw: ${s.slice(0, 200)}`);
+  }
+  return JSON.parse(s.slice(start, end + 1));
+}
+
 export default async function handler(request: Request): Promise<Response> {
   if (request.method !== "POST") {
     return new Response("Method Not Allowed", { status: 405 });
   }
 
-  const apiKey = process.env.MINIMAX_API_KEY;
-  if (!apiKey) {
-    return Response.json({ error: "MINIMAX_API_KEY not configured" }, { status: 500 });
-  }
+  try {
+    const apiKey = process.env.MINIMAX_API_KEY;
+    if (!apiKey) return json({ error: "MINIMAX_API_KEY not configured" }, 500);
 
-  const { productInfo, contentStrategy }: GenerateNotesRequest = await request.json();
+    const { productInfo, contentStrategy }: GenerateNotesRequest = await request.json();
 
-  const prompt = `请为以下商品生成3个不同风格的小红书笔记：
+    const prompt = `请为以下商品生成3个不同风格的小红书笔记：
 
 商品名称：${productInfo.name}
 核心卖点：${productInfo.sellingPoints.join("、")}
@@ -38,39 +57,56 @@ export default async function handler(request: Request): Promise<Response> {
 只返回JSON数组，不要任何其他文字：
 [{"label":"V1","style":"风格名（4-6字）","stars":5,"title":"标题（15-28字）","body":"正文（分段落，符合字数要求）","tags":["#话题1","#话题2","#话题3","#话题4","#话题5"],"metrics":{"hotWords":4,"sentiment":90,"predictLikes":"1.2k","riskWords":0},"suggestion":"一句优化建议（不超过40字）"},{"label":"V2","style":"...","stars":4,...},{"label":"V3","style":"...","stars":5,...}]`;
 
-  const mmRes = await fetch("https://api.minimax.chat/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: "MiniMax-M2.7",
-      messages: [
-        {
-          role: "system",
-          content: "你是专业的小红书内容创作者。请只输出JSON，不输出任何其他文字或解释。",
-        },
-        { role: "user", content: prompt },
-      ],
-      temperature: 0.85,
-      max_tokens: 4000,
-    }),
-  });
+    const mmRes = await fetch("https://api.minimax.chat/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "MiniMax-M2.7",
+        messages: [
+          {
+            role: "system",
+            content: "你是专业的小红书内容创作者。请只输出JSON数组，不输出任何其他文字或解释。",
+          },
+          { role: "user", content: prompt },
+        ],
+        temperature: 0.85,
+        max_tokens: 4000,
+      }),
+    });
 
-  if (!mmRes.ok) {
-    const err = await mmRes.text();
-    return Response.json({ error: `MiniMax API error: ${err}` }, { status: 502 });
-  }
+    const mmText = await mmRes.text();
 
-  const mmData: any = await mmRes.json();
-  const content: string = mmData.choices?.[0]?.message?.content ?? "";
+    if (!mmRes.ok) {
+      return json({ error: `MiniMax API error: ${mmText}` }, 502);
+    }
 
-  let versions: NoteVersion[];
-  try {
-    const jsonStr = content.replace(/^```(?:json)?\s*/m, "").replace(/\s*```$/m, "").trim();
-    const raw: any[] = JSON.parse(jsonStr);
-    versions = raw.slice(0, 3).map((v, i) => ({
+    let mmData: any;
+    try {
+      mmData = JSON.parse(mmText);
+    } catch {
+      return json({ error: `MiniMax returned non-JSON: ${mmText.slice(0, 300)}` }, 502);
+    }
+
+    const content: string =
+      mmData.choices?.[0]?.message?.content ??
+      mmData.choices?.[0]?.message?.reasoning_content ??
+      "";
+
+    if (!content) {
+      return json({ error: `Empty content from model. Response: ${mmText.slice(0, 300)}` }, 500);
+    }
+
+    let raw: any[];
+    try {
+      raw = extractJsonArray(content);
+    } catch (e: any) {
+      return json({ error: `JSON parse failed: ${e.message}` }, 500);
+    }
+
+    const versions: NoteVersion[] = raw.slice(0, 3).map((v, i) => ({
       id: `v${i + 1}`,
       label: v.label ?? `V${i + 1}`,
       style: v.style ?? "种草笔记",
@@ -88,12 +124,9 @@ export default async function handler(request: Request): Promise<Response> {
       },
       suggestion: v.suggestion ?? "",
     }));
-  } catch {
-    return Response.json(
-      { error: "解析生成结果失败，请重试", raw: content },
-      { status: 500 },
-    );
-  }
 
-  return Response.json({ versions } as GenerateNotesResponse);
+    return json({ versions } as GenerateNotesResponse);
+  } catch (e: any) {
+    return json({ error: e.message ?? "Unexpected error" }, 500);
+  }
 }
