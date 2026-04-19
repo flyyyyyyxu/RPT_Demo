@@ -4,9 +4,6 @@ function sanitizeJson(text: string): string {
   return text
     .replace(/```json\s*/gi, "")
     .replace(/```\s*/g, "")
-    .replace(/[\u201c\u201d\u2018\u2019\u300c\u300d\uff02]/g, '"')
-    .replace(/\uff1a/g, ":")
-    .replace(/\uff0c/g, ",")
     .replace(/,\s*([}\]])/g, "$1")
     .trim();
 }
@@ -18,7 +15,26 @@ function extractJsonArray(text: string): any[] {
   if (start === -1 || end === -1 || end <= start) {
     throw new Error(`No JSON array found. Raw: ${s.slice(0, 300)}`);
   }
-  return JSON.parse(s.slice(start, end + 1));
+  const jsonText = s.slice(start, end + 1);
+
+  try {
+    return JSON.parse(jsonText);
+  } catch (firstError) {
+    // Fallback for the rarer case where the model used full-width punctuation for JSON syntax.
+    // Do this only after the untouched parse fails, because normalizing quotes inside body text
+    // can corrupt otherwise-valid note content such as “洗完不紧绷”.
+    const normalized = jsonText
+      .replace(/[\u201c\u201d\u2018\u2019\u300c\u300d\uff02]/g, '"')
+      .replace(/\uff1a/g, ":")
+      .replace(/\uff0c/g, ",")
+      .replace(/,\s*([}\]])/g, "$1");
+
+    try {
+      return JSON.parse(normalized);
+    } catch {
+      throw firstError;
+    }
+  }
 }
 
 // Node.js runtime (default) — avoids Edge Runtime URL pattern quirks
@@ -53,6 +69,7 @@ export default async function handler(req: any, res: any) {
 - V3：真实日记风（使用前后对比或时间线叙述，情感真实）
 
 注意：直接用商品名称，不要使用"XX品牌"等占位符。
+注意：正文里避免使用英文双引号，强调词请使用中文书名号或括号。
 
 只返回JSON数组，不要任何其他文字：
 [{"label":"V1","style":"风格名（4-6字）","stars":5,"title":"标题（15-28字）","body":"正文（分段落，符合字数要求）","tags":["#话题1","#话题2","#话题3","#话题4","#话题5"],"metrics":{"hotWords":4,"sentiment":90,"predictLikes":"1.2k","riskWords":0},"suggestion":"一句优化建议（不超过40字）"},{"label":"V2",...},{"label":"V3",...}]`;

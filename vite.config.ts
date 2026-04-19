@@ -2,6 +2,7 @@ import { jsxLocPlugin } from "@builder.io/vite-plugin-jsx-loc";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import fs from "node:fs";
+import { IncomingMessage, ServerResponse } from "node:http";
 import path from "node:path";
 import { defineConfig, type Plugin, type ViteDevServer } from "vite";
 import { vitePluginManusRuntime } from "vite-plugin-manus-runtime";
@@ -15,6 +16,33 @@ const PROJECT_ROOT = import.meta.dirname;
 const LOG_DIR = path.join(PROJECT_ROOT, ".manus-logs");
 const MAX_LOG_SIZE_BYTES = 1 * 1024 * 1024; // 1MB per log file
 const TRIM_TARGET_BYTES = Math.floor(MAX_LOG_SIZE_BYTES * 0.6); // Trim to 60% to avoid constant re-trimming
+
+function loadLocalEnv() {
+  const envPath = path.join(PROJECT_ROOT, ".env.local");
+  if (!fs.existsSync(envPath)) return;
+
+  const lines = fs.readFileSync(envPath, "utf-8").split(/\r?\n/);
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+
+    const eq = trimmed.indexOf("=");
+    if (eq === -1) continue;
+
+    const key = trimmed.slice(0, eq).trim();
+    let value = trimmed.slice(eq + 1).trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+
+    if (key && process.env[key] === undefined) {
+      process.env[key] = value;
+    }
+  }
+}
 
 type LogSource = "browserConsole" | "networkRequests" | "sessionReplay";
 
@@ -66,6 +94,64 @@ function writeToLogFile(source: LogSource, entries: unknown[]) {
 
   // Trim if exceeds max size
   trimLogFile(logPath, MAX_LOG_SIZE_BYTES);
+}
+
+async function readJsonBody(req: IncomingMessage) {
+  let body = "";
+  for await (const chunk of req) {
+    body += chunk.toString();
+  }
+  return body ? JSON.parse(body) : {};
+}
+
+function createApiResponse(res: ServerResponse) {
+  return {
+    status(code: number) {
+      res.statusCode = code;
+      return this;
+    },
+    json(payload: unknown) {
+      if (!res.headersSent) {
+        res.setHeader("Content-Type", "application/json; charset=utf-8");
+      }
+      res.end(JSON.stringify(payload));
+    },
+  };
+}
+
+function vitePluginApiRoutes(): Plugin {
+  return {
+    name: "local-api-routes",
+    configureServer(server: ViteDevServer) {
+      loadLocalEnv();
+
+      server.middlewares.use("/api/competitor-insight", async (req, res, next) => {
+        if (req.method !== "POST") return next();
+        try {
+          const { default: handler } = await import("./api/competitor-insight");
+          (req as IncomingMessage & { body?: unknown }).body = await readJsonBody(req);
+          await handler(req, createApiResponse(res));
+        } catch (e: any) {
+          res.statusCode = 500;
+          res.setHeader("Content-Type", "application/json; charset=utf-8");
+          res.end(JSON.stringify({ error: e.message ?? "Unexpected API error" }));
+        }
+      });
+
+      server.middlewares.use("/api/generate-notes", async (req, res, next) => {
+        if (req.method !== "POST") return next();
+        try {
+          const { default: handler } = await import("./api/generate-notes");
+          (req as IncomingMessage & { body?: unknown }).body = await readJsonBody(req);
+          await handler(req, createApiResponse(res));
+        } catch (e: any) {
+          res.statusCode = 500;
+          res.setHeader("Content-Type", "application/json; charset=utf-8");
+          res.end(JSON.stringify({ error: e.message ?? "Unexpected API error" }));
+        }
+      });
+    },
+  };
 }
 
 /**
@@ -203,7 +289,15 @@ function vitePluginStorageProxy(): Plugin {
   };
 }
 
-const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector(), vitePluginStorageProxy()];
+const plugins = [
+  react(),
+  tailwindcss(),
+  jsxLocPlugin(),
+  vitePluginManusRuntime(),
+  vitePluginApiRoutes(),
+  vitePluginManusDebugCollector(),
+  vitePluginStorageProxy(),
+];
 
 export default defineConfig({
   plugins,
