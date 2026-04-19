@@ -1,25 +1,14 @@
 import type { GenerateNotesRequest, GenerateNotesResponse, NoteVersion } from "../shared/types";
 
-export const config = { runtime: "edge" };
-
-function json(data: unknown, status = 200): Response {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
 function sanitizeJson(text: string): string {
-  return (
-    text
-      .replace(/```json\s*/gi, "")
-      .replace(/```\s*/g, "")
-      .replace(/[\u201c\u201d\u2018\u2019\u300c\u300d\uff02]/g, '"')
-      .replace(/\uff1a/g, ":")
-      .replace(/\uff0c/g, ",")
-      .replace(/,\s*([}\]])/g, "$1")
-      .trim()
-  );
+  return text
+    .replace(/```json\s*/gi, "")
+    .replace(/```\s*/g, "")
+    .replace(/[\u201c\u201d\u2018\u2019\u300c\u300d\uff02]/g, '"')
+    .replace(/\uff1a/g, ":")
+    .replace(/\uff0c/g, ",")
+    .replace(/,\s*([}\]])/g, "$1")
+    .trim();
 }
 
 function extractJsonArray(text: string): any[] {
@@ -27,21 +16,22 @@ function extractJsonArray(text: string): any[] {
   const start = s.indexOf("[");
   const end = s.lastIndexOf("]");
   if (start === -1 || end === -1 || end <= start) {
-    throw new Error(`No JSON array found in response. Raw: ${s.slice(0, 200)}`);
+    throw new Error(`No JSON array found. Raw: ${s.slice(0, 300)}`);
   }
   return JSON.parse(s.slice(start, end + 1));
 }
 
-export default async function handler(request: Request): Promise<Response> {
-  if (request.method !== "POST") {
-    return new Response("Method Not Allowed", { status: 405 });
+// Node.js runtime (default) — avoids Edge Runtime URL pattern quirks
+export default async function handler(req: any, res: any) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method Not Allowed" });
   }
 
   try {
     const apiKey = process.env.MINIMAX_API_KEY;
-    if (!apiKey) return json({ error: "MINIMAX_API_KEY not configured" }, 500);
+    if (!apiKey) return res.status(500).json({ error: "MINIMAX_API_KEY not configured" });
 
-    const { productInfo, contentStrategy }: GenerateNotesRequest = await request.json();
+    const { productInfo, contentStrategy }: GenerateNotesRequest = req.body;
 
     const prompt = `请为以下商品生成3个不同风格的小红书笔记：
 
@@ -54,18 +44,18 @@ export default async function handler(request: Request): Promise<Response> {
 语气风格：${contentStrategy.toneStyle}
 标题风格：${contentStrategy.titleStyle}
 正文风格：${contentStrategy.articleStyle}
-情绪浓度：${contentStrategy.emotionLevel}/100（越高越感性）
-节奏感：${contentStrategy.rhythmLevel}/100（越高越有节奏感）
+情绪浓度：${contentStrategy.emotionLevel}/100
+节奏感：${contentStrategy.rhythmLevel}/100
 
 风格要求：
 - V1：主风格（${contentStrategy.toneStyle} + ${contentStrategy.noteType}）
 - V2：干货科普风（加入成分/数据/原理分析，理性为主）
 - V3：真实日记风（使用前后对比或时间线叙述，情感真实）
 
-注意：笔记内容要贴合商品实际，不要使用"XX品牌"等占位符，直接用商品名称。
+注意：直接用商品名称，不要使用"XX品牌"等占位符。
 
 只返回JSON数组，不要任何其他文字：
-[{"label":"V1","style":"风格名（4-6字）","stars":5,"title":"标题（15-28字）","body":"正文（分段落，符合字数要求）","tags":["#话题1","#话题2","#话题3","#话题4","#话题5"],"metrics":{"hotWords":4,"sentiment":90,"predictLikes":"1.2k","riskWords":0},"suggestion":"一句优化建议（不超过40字）"},{"label":"V2","style":"...","stars":4,...},{"label":"V3","style":"...","stars":5,...}]`;
+[{"label":"V1","style":"风格名（4-6字）","stars":5,"title":"标题（15-28字）","body":"正文（分段落，符合字数要求）","tags":["#话题1","#话题2","#话题3","#话题4","#话题5"],"metrics":{"hotWords":4,"sentiment":90,"predictLikes":"1.2k","riskWords":0},"suggestion":"一句优化建议（不超过40字）"},{"label":"V2",...},{"label":"V3",...}]`;
 
     const mmRes = await fetch("https://api.minimax.chat/v1/chat/completions", {
       method: "POST",
@@ -90,14 +80,14 @@ export default async function handler(request: Request): Promise<Response> {
     const mmText = await mmRes.text();
 
     if (!mmRes.ok) {
-      return json({ error: `MiniMax API error: ${mmText}` }, 502);
+      return res.status(502).json({ error: `MiniMax API error: ${mmText}` });
     }
 
     let mmData: any;
     try {
       mmData = JSON.parse(mmText);
     } catch {
-      return json({ error: `MiniMax returned non-JSON: ${mmText.slice(0, 300)}` }, 502);
+      return res.status(502).json({ error: `MiniMax returned non-JSON: ${mmText.slice(0, 300)}` });
     }
 
     const content: string =
@@ -106,14 +96,16 @@ export default async function handler(request: Request): Promise<Response> {
       "";
 
     if (!content) {
-      return json({ error: `Empty content from model. Response: ${mmText.slice(0, 300)}` }, 500);
+      return res.status(500).json({
+        error: `Empty content from model. Full response: ${mmText.slice(0, 500)}`,
+      });
     }
 
     let raw: any[];
     try {
       raw = extractJsonArray(content);
     } catch (e: any) {
-      return json({ error: `JSON parse failed: ${e.message}` }, 500);
+      return res.status(500).json({ error: `JSON parse failed: ${e.message}` });
     }
 
     const versions: NoteVersion[] = raw.slice(0, 3).map((v, i) => ({
@@ -135,8 +127,8 @@ export default async function handler(request: Request): Promise<Response> {
       suggestion: v.suggestion ?? "",
     }));
 
-    return json({ versions } as GenerateNotesResponse);
+    return res.status(200).json({ versions } as GenerateNotesResponse);
   } catch (e: any) {
-    return json({ error: e.message ?? "Unexpected error" }, 500);
+    return res.status(500).json({ error: e.message ?? "Unexpected error" });
   }
 }

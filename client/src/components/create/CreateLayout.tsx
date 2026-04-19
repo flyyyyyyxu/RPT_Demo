@@ -18,10 +18,19 @@ const steps = [
 
 export default function CreateLayout({ currentStep, children, rightAction }: CreateLayoutProps) {
   const [, navigate] = useLocation();
-  const { imageConfig } = useCreateContext();
+  const { contentStrategy, imageConfig } = useCreateContext();
 
-  const noteCredits = 3;
-  const imageCredits = currentStep >= 3 ? (imageConfig.imageCount || 3) : 0;
+  // Notes: actual count configured in step 2 (generateCount)
+  const noteCredits = currentStep >= 2 ? contentStrategy.generateCount : 0;
+
+  // Images: on step 3 show projected count; on step 4 only count actually generated images
+  const imageCredits = (() => {
+    if (currentStep < 3) return 0;
+    if (currentStep === 3) return imageConfig.imageCount;
+    // step 4: only count images that were actually generated (not just configured)
+    return imageConfig.generatedImages.length;
+  })();
+
   const totalCredits = noteCredits + imageCredits;
 
   return (
