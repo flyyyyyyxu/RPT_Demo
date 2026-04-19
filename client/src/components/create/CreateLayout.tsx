@@ -1,7 +1,6 @@
 import { Sparkles, Save, User, Check } from "lucide-react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
-import { useCreateContext } from "@/contexts/CreateContext";
 
 interface CreateLayoutProps {
   currentStep: 1 | 2 | 3 | 4;
@@ -18,20 +17,6 @@ const steps = [
 
 export default function CreateLayout({ currentStep, children, rightAction }: CreateLayoutProps) {
   const [, navigate] = useLocation();
-  const { contentStrategy, imageConfig } = useCreateContext();
-
-  // Notes: actual count configured in step 2 (generateCount)
-  const noteCredits = currentStep >= 2 ? contentStrategy.generateCount : 0;
-
-  // Images: on step 3 show projected count; on step 4 only count actually generated images
-  const imageCredits = (() => {
-    if (currentStep < 3) return 0;
-    if (currentStep === 3) return imageConfig.imageCount;
-    // step 4: only count images that were actually generated (not just configured)
-    return imageConfig.generatedImages.length;
-  })();
-
-  const totalCredits = noteCredits + imageCredits;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -94,11 +79,6 @@ export default function CreateLayout({ currentStep, children, rightAction }: Cre
 
         {/* Right actions */}
         <div className="flex items-center gap-3 shrink-0">
-          <div className="hidden sm:flex items-center gap-1 text-xs text-muted-foreground bg-secondary/60 px-2.5 py-1 rounded-md">
-            <span>本次预计消耗</span>
-            <span className="font-bold text-primary mx-0.5">{totalCredits}</span>
-            <span>额度</span>
-          </div>
           {rightAction}
           <button
             className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"

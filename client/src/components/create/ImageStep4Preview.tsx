@@ -9,6 +9,7 @@ import {
   ArrowRight,
   Download,
   Pen,
+  Save,
   RefreshCw,
   CheckCircle2,
   AlertTriangle,
@@ -171,35 +172,6 @@ export default function ImageStep4Preview({ onBack }: ImageStep4PreviewProps) {
             <span className="font-semibold">需要更精细调整？</span>打开<span className="font-medium text-blue-600 underline underline-offset-2 cursor-pointer">进阶图片编辑器</span>可自由调整文字位置、字号、颜色、加贴纸、换背景、统一滤镜等，商家常用的自定义能力都在这里
           </p>
         </div>
-
-        {/* Actions */}
-        <div className="flex items-center justify-between pt-4">
-          <Button
-            variant="outline"
-            className="bg-white"
-            onClick={onBack}
-          >
-            <ArrowLeft className="w-4 h-4 mr-1.5" />
-            返回上传配图
-          </Button>
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              className="bg-white"
-              onClick={() => toast.info("打开进阶编辑器")}
-            >
-              <Pen className="w-4 h-4 mr-1.5" />
-              打开进阶编辑器
-            </Button>
-            <Button
-              className="bg-primary hover:bg-primary/90 text-white shadow-md shadow-primary/20 px-6"
-              onClick={handleFinish}
-            >
-              完成 · 生成笔记
-              <ArrowRight className="w-4 h-4 ml-1.5" />
-            </Button>
-          </div>
-        </div>
       </div>
 
       {/* Right: Scoring + Suggestions (2/5) */}
@@ -247,6 +219,33 @@ export default function ImageStep4Preview({ onBack }: ImageStep4PreviewProps) {
               <span className="text-xs text-amber-700">建议为配图加文字标注，提升收藏率</span>
             </div>
           </div>
+        </div>
+
+        {/* Actions */}
+        <div className="grid grid-cols-3 gap-3 pt-1">
+          <Button
+            variant="outline"
+            className="bg-white"
+            onClick={onBack}
+          >
+            <ArrowLeft className="w-4 h-4 mr-1.5" />
+            返回上传配图
+          </Button>
+          <Button
+            variant="outline"
+            className="bg-white"
+            onClick={() => toast.success("草稿已保存")}
+          >
+            <Save className="w-4 h-4 mr-1.5" />
+            保存草稿
+          </Button>
+          <Button
+            className="bg-primary hover:bg-primary/90 text-white shadow-md shadow-primary/20"
+            onClick={handleFinish}
+          >
+            生成笔记
+            <ArrowRight className="w-4 h-4 ml-1.5" />
+          </Button>
         </div>
       </motion.div>
     </div>

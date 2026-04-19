@@ -15,6 +15,7 @@ import {
   ArrowRight,
   Eye,
   Search,
+  Save,
   Zap,
   Plus,
   Loader2,
@@ -571,7 +572,7 @@ export default function CreateStep2() {
             </div>
 
             {/* Actions */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <Button
                 variant="outline"
                 className="bg-white"
@@ -579,6 +580,14 @@ export default function CreateStep2() {
               >
                 <ArrowLeft className="w-4 h-4 mr-1.5" />
                 返回上一步
+              </Button>
+              <Button
+                variant="outline"
+                className="bg-white"
+                onClick={() => toast.success("草稿已保存")}
+              >
+                <Save className="w-4 h-4 mr-1.5" />
+                保存草稿
               </Button>
               <Button
                 className="bg-primary hover:bg-primary/90 text-white shadow-md shadow-primary/20"

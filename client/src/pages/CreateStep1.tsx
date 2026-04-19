@@ -3,7 +3,7 @@
  * Layout: 左60% 表单 + 右40% 竞品洞察面板
  * Changes:
  * - "写作信息" → "商品信息"
- * - "5/6已填" → "本次预计消耗2额度" (moved to CreateLayout)
+ * - Competitor links with right-aligned "一键生成竞品洞察" button
  * - Added 商品描述 and inferred product semantics for downstream generation
  * - Competitor links with right-aligned "一键生成竞品洞察" button
  * - Tips moved inline as gray hint text after labels
@@ -581,28 +581,6 @@ export default function CreateStep1() {
                 />
               </div>
             </FormField>
-
-            {/* Actions */}
-            <div className="flex items-center justify-between pt-4">
-              <Button
-                variant="outline"
-                className="bg-white"
-                onClick={() => toast.success("草稿已保存")}
-              >
-                保存草稿
-              </Button>
-              <Button
-                className="bg-primary hover:bg-primary/90 text-white shadow-md shadow-primary/20 px-6"
-                onClick={handleNext}
-                disabled={nextLoading}
-              >
-                {nextLoading ? (
-                  <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" />分析商品中…</>
-                ) : (
-                  <>下一步：内容策略<ArrowRight className="w-4 h-4 ml-1.5" /></>
-                )}
-              </Button>
-            </div>
           </div>
 
           {/* Right: Competitor Insight Panel (2/5) */}
@@ -699,6 +677,28 @@ export default function CreateStep1() {
               <p className="text-xs text-muted-foreground">
                 你之前有 3 份未完成的笔记
               </p>
+            </div>
+
+            {/* Actions */}
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                variant="outline"
+                className="bg-white"
+                onClick={() => toast.success("草稿已保存")}
+              >
+                保存草稿
+              </Button>
+              <Button
+                className="bg-primary hover:bg-primary/90 text-white shadow-md shadow-primary/20"
+                onClick={handleNext}
+                disabled={nextLoading}
+              >
+                {nextLoading ? (
+                  <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" />分析商品中…</>
+                ) : (
+                  <>下一步：内容策略<ArrowRight className="w-4 h-4 ml-1.5" /></>
+                )}
+              </Button>
             </div>
           </motion.div>
         </div>

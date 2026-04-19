@@ -247,7 +247,7 @@ export default function CreateStep4Result() {
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
-              className="rounded-2xl border border-border/60 bg-white shadow-sm overflow-hidden flex flex-col"
+              className="h-full rounded-2xl border border-border/60 bg-white shadow-sm overflow-hidden flex flex-col"
             >
               {/* Card header */}
               <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/40 shrink-0">
@@ -279,7 +279,7 @@ export default function CreateStep4Result() {
               {/* Content — flex-1 keeps engagement bar at bottom */}
               <div className="flex-1 flex flex-col px-4 py-3">
                 <h3 className="text-sm font-bold leading-snug mb-2">{v.title}</h3>
-                <div className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line line-clamp-[10]">
+                <div className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line">
                   {v.body}
                 </div>
                 <div className="flex flex-wrap gap-1 mt-3">
@@ -293,7 +293,7 @@ export default function CreateStep4Result() {
                   ))}
                 </div>
                 {/* Engagement stats — mt-auto pins it to bottom */}
-                <div className="mt-auto pt-3 border-t border-border/30 flex items-center justify-between">
+                <div className="mt-auto h-11 pt-3 border-t border-border/30 flex items-center justify-between shrink-0">
                   <div className="flex items-center gap-4 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <Heart className="w-3.5 h-3.5" /> {v.metrics.predictLikes}

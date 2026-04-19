@@ -12,6 +12,7 @@ import {
   ArrowRight,
   RefreshCw,
   Check,
+  Save,
   Sparkles,
   Type,
   Lightbulb,
@@ -166,11 +167,11 @@ export default function ImageStep2Text({ onNext, onBack }: ImageStep2TextProps) 
             ))}
           </div>
           <button
-            onClick={() => toast.info("再生成一批（用 1 次额度）")}
+            onClick={() => toast.info("再生成一批")}
             className="w-full mt-3 py-2.5 rounded-xl border border-border/60 bg-white text-sm text-muted-foreground font-medium hover:border-primary/20 hover:text-primary transition-all flex items-center justify-center gap-1.5"
           >
             <RefreshCw className="w-3.5 h-3.5" />
-            再生成一批（用 1 次额度）
+            再生成一批
           </button>
         </div>
 
@@ -293,25 +294,6 @@ export default function ImageStep2Text({ onNext, onBack }: ImageStep2TextProps) 
             </div>
           </div>
         </div>
-
-        {/* Actions */}
-        <div className="flex items-center justify-between pt-4">
-          <Button
-            variant="outline"
-            className="bg-white"
-            onClick={onBack}
-          >
-            <ArrowLeft className="w-4 h-4 mr-1.5" />
-            返回制作封面
-          </Button>
-          <Button
-            className="bg-primary hover:bg-primary/90 text-white shadow-md shadow-primary/20 px-6"
-            onClick={handleNext}
-          >
-            下一步：上传配图
-            <ArrowRight className="w-4 h-4 ml-1.5" />
-          </Button>
-        </div>
       </div>
 
       {/* Right: Analysis + Tips (2/5) */}
@@ -386,6 +368,33 @@ export default function ImageStep2Text({ onNext, onBack }: ImageStep2TextProps) 
               </p>
             </div>
           </div>
+        </div>
+
+        {/* Actions */}
+        <div className="grid grid-cols-3 gap-3 pt-1">
+          <Button
+            variant="outline"
+            className="bg-white"
+            onClick={onBack}
+          >
+            <ArrowLeft className="w-4 h-4 mr-1.5" />
+            返回制作封面
+          </Button>
+          <Button
+            variant="outline"
+            className="bg-white"
+            onClick={() => toast.success("草稿已保存")}
+          >
+            <Save className="w-4 h-4 mr-1.5" />
+            保存草稿
+          </Button>
+          <Button
+            className="bg-primary hover:bg-primary/90 text-white shadow-md shadow-primary/20"
+            onClick={handleNext}
+          >
+            下一步：上传配图
+            <ArrowRight className="w-4 h-4 ml-1.5" />
+          </Button>
         </div>
       </motion.div>
     </div>

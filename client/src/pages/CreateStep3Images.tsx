@@ -33,9 +33,9 @@ export default function CreateStep3Images() {
       <div className="max-w-6xl mx-auto px-4 lg:px-8 py-8">
         {/* Page header */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold tracking-tight mb-1.5">图片编辑</h1>
+          <h1 className="text-2xl font-bold tracking-tight mb-1.5">图片编辑（暂未接后端）</h1>
           <p className="text-sm text-muted-foreground">
-            AI 帮你生成封面图，其他配图你自己上传，一步步完成点击率最高的图片组合
+            AI生成高点击封面图，配图自由上传，快速组合成更容易转化的笔记图片。
           </p>
         </div>
 

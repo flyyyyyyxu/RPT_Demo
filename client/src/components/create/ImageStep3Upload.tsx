@@ -10,6 +10,7 @@ import {
   ArrowRight,
   Upload,
   Plus,
+  Save,
   Check,
   X,
   Info,
@@ -168,25 +169,6 @@ export default function ImageStep3Upload({ onNext, onBack }: ImageStep3UploadPro
             批量上传
           </Button>
         </div>
-
-        {/* Actions */}
-        <div className="flex items-center justify-between pt-4">
-          <Button
-            variant="outline"
-            className="bg-white"
-            onClick={onBack}
-          >
-            <ArrowLeft className="w-4 h-4 mr-1.5" />
-            返回封面编辑
-          </Button>
-          <Button
-            className="bg-primary hover:bg-primary/90 text-white shadow-md shadow-primary/20 px-6"
-            onClick={handleNext}
-          >
-            下一步：合成预览
-            <ArrowRight className="w-4 h-4 ml-1.5" />
-          </Button>
-        </div>
       </div>
 
       {/* Right: Tips (2/5) */}
@@ -229,6 +211,33 @@ export default function ImageStep3Upload({ onNext, onBack }: ImageStep3UploadPro
               </p>
             </div>
           </div>
+        </div>
+
+        {/* Actions */}
+        <div className="grid grid-cols-3 gap-3 pt-1">
+          <Button
+            variant="outline"
+            className="bg-white"
+            onClick={onBack}
+          >
+            <ArrowLeft className="w-4 h-4 mr-1.5" />
+            返回封面编辑
+          </Button>
+          <Button
+            variant="outline"
+            className="bg-white"
+            onClick={() => toast.success("草稿已保存")}
+          >
+            <Save className="w-4 h-4 mr-1.5" />
+            保存草稿
+          </Button>
+          <Button
+            className="bg-primary hover:bg-primary/90 text-white shadow-md shadow-primary/20"
+            onClick={handleNext}
+          >
+            下一步：合成预览
+            <ArrowRight className="w-4 h-4 ml-1.5" />
+          </Button>
         </div>
       </motion.div>
     </div>

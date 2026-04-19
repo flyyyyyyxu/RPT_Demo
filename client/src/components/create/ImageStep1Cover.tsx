@@ -12,10 +12,9 @@ import {
   Sparkles,
   Loader2,
   ArrowLeft,
-  ArrowRight,
-  ImageIcon,
-  Lightbulb,
   BookOpen,
+  Save,
+  Lightbulb,
   X,
 } from "lucide-react";
 import { useCreateContext } from "@/contexts/CreateContext";
@@ -306,7 +305,6 @@ export default function ImageStep1Cover({ onNext, onBack, onSkip }: ImageStep1Co
             <div className="flex items-center justify-between mb-3">
               <label className="text-sm font-semibold text-foreground">
                 生成数量
-                <span className="text-[11px] font-normal text-muted-foreground/60 ml-2">每张消耗 1 次额度</span>
               </label>
               <span className="text-sm font-bold text-primary">{imageCount} 张</span>
             </div>
@@ -322,44 +320,6 @@ export default function ImageStep1Cover({ onNext, onBack, onSkip }: ImageStep1Co
               <span>2 张</span>
               <span>6 张</span>
             </div>
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-center justify-between pt-4">
-          <Button
-            variant="outline"
-            className="bg-white"
-            onClick={onBack}
-          >
-            <ArrowLeft className="w-4 h-4 mr-1.5" />
-            返回内容策略
-          </Button>
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              className="bg-white"
-              onClick={onSkip}
-            >
-              跳过图片编辑
-            </Button>
-            <Button
-              className="bg-primary hover:bg-primary/90 text-white shadow-md shadow-primary/20 px-6"
-              onClick={handleGenerate}
-              disabled={generating}
-            >
-              {generating ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
-                  生成中...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4 mr-1.5" />
-                  开始生成 {imageCount} 张封面
-                </>
-              )}
-            </Button>
           </div>
         </div>
       </div>
@@ -417,6 +377,50 @@ export default function ImageStep1Cover({ onNext, onBack, onSkip }: ImageStep1Co
               text={`"治愈""元气""精致"能让画面调性更一致`}
             />
           </div>
+        </div>
+
+        {/* Actions */}
+        <div className="grid grid-cols-2 gap-3 pt-1">
+          <Button
+            variant="outline"
+            className="bg-white"
+            onClick={() => toast.success("草稿已保存")}
+          >
+            <Save className="w-4 h-4 mr-1.5" />
+            保存草稿
+          </Button>
+          <Button
+            variant="outline"
+            className="bg-white"
+            onClick={onSkip}
+          >
+            跳过图片编辑
+          </Button>
+          <Button
+            variant="outline"
+            className="bg-white"
+            onClick={onBack}
+          >
+            <ArrowLeft className="w-4 h-4 mr-1.5" />
+            返回上一步
+          </Button>
+          <Button
+            className="bg-primary hover:bg-primary/90 text-white shadow-md shadow-primary/20"
+            onClick={handleGenerate}
+            disabled={generating}
+          >
+            {generating ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                生成中...
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4 mr-1.5" />
+                生成封面
+              </>
+            )}
+          </Button>
         </div>
       </motion.div>
     </div>
