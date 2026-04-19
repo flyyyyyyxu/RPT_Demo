@@ -25,6 +25,8 @@ export default async function handler(req: any, res: any) {
 
     const {
       productName,
+      productDescription,
+      productKeywords,
       sellingPoints,
       targetAudience,
       category,
@@ -35,6 +37,8 @@ export default async function handler(req: any, res: any) {
 
     const productInfoLines = [
       `名称：${productName || "未填写"}`,
+      `描述：${productDescription || "未填写"}`,
+      `关键词：${(productKeywords ?? []).join("、") || "未提取"}`,
       `卖点：${(sellingPoints ?? []).join("、") || "未填写"}`,
       `目标人群：${(targetAudience ?? []).join("、") || "未填写"}`,
       category ? `品类：${category}${subcategory ? ` / ${subcategory}` : ""}` : "",

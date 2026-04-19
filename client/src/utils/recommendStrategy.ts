@@ -27,6 +27,8 @@ function collectSearchText(p: ProductInfoForRec): string {
     p.category,
     p.subcategory,
     p.productName,
+    p.productDescription,
+    ...(p.productKeywords ?? []),
     ...(p.sellingPoints ?? []),
     ...(p.targetAudience ?? []),
     ...(p.usageScenarios ?? []),

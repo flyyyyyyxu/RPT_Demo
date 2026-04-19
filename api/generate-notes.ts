@@ -85,6 +85,10 @@ export default async function handler(req: any, res: any) {
 
 【商品信息】
 商品名称：${productInfo.name}
+商品描述：${productInfo.description || "未填写"}
+商品关键词：${productInfo.productKeywords?.join("、") || "未提取"}
+品类信息：${productInfo.category ? `${productInfo.category}${productInfo.subcategory ? ` / ${productInfo.subcategory}` : ""}` : "未识别"}
+使用场景：${productInfo.usageScenarios?.join("、") || "未填写"}
 核心卖点：${productInfo.sellingPoints.join("、")}
 目标人群：${productInfo.targetAudience.join("、") || "通用"}
 价格区间：${productInfo.priceRange || "未填写"}

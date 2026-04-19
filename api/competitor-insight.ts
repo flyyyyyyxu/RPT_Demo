@@ -66,7 +66,16 @@ export default async function handler(req: any, res: any) {
     const apiKey = process.env.MINIMAX_API_KEY;
     if (!apiKey) return res.status(500).json({ error: "MINIMAX_API_KEY not configured" });
 
-    const { competitorLinks, productName, sellingPoints }: CompetitorInsightRequest = req.body;
+    const {
+      competitorLinks,
+      productName,
+      productDescription,
+      productKeywords,
+      sellingPoints,
+      category,
+      subcategory,
+      usageScenarios,
+    }: CompetitorInsightRequest = req.body;
 
     // Actually fetch the competitor URLs to get real content
     const urls = extractUrls(competitorLinks);
@@ -86,6 +95,10 @@ export default async function handler(req: any, res: any) {
 
 【我方商品】
 名称：${productName}
+描述：${productDescription || "未填写"}
+品类：${category ? `${category}${subcategory ? ` / ${subcategory}` : ""}` : "未识别"}
+关键词：${(productKeywords ?? []).join("、") || "未提取"}
+使用场景：${(usageScenarios ?? []).join("、") || "未填写"}
 卖点：${sellingPoints.join("、")}
 
 ${urlSection ? `【竞品内容】\n${urlSection}` : "（未提供竞品链接，请基于品类通用内容表现分析）"}

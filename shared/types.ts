@@ -20,10 +20,15 @@ export interface NoteVersion {
 export interface GenerateNotesRequest {
   productInfo: {
     name: string;
+    description?: string;
+    productKeywords?: string[];
     sellingPoints: string[];
     targetAudience: string[];
     wordCount: string;
     priceRange: string;
+    category?: string;
+    subcategory?: string;
+    usageScenarios?: string[];
   };
   contentStrategy: {
     noteType: string;
@@ -54,11 +59,18 @@ export interface CompetitorInsightItem {
 export interface CompetitorInsightRequest {
   competitorLinks: string;
   productName: string;
+  productDescription?: string;
+  productKeywords?: string[];
   sellingPoints: string[];
+  category?: string;
+  subcategory?: string;
+  usageScenarios?: string[];
 }
 
 export interface CompetitorInsightInferredRequest {
   productName: string;
+  productDescription?: string;
+  productKeywords?: string[];
   sellingPoints: string[];
   targetAudience?: string[];
   category?: string;

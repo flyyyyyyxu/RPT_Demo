@@ -8,6 +8,7 @@ import type { RecommendedStrategy } from "@/types/contentStrategy";
 
 export interface ProductInfo {
   name: string;
+  description: string;
   sellingPoints: string[];
   targetAudience: string[];
   wordCount: string;
@@ -16,8 +17,9 @@ export interface ProductInfo {
   importFromLibrary: boolean;
   productImages: string[]; // uploaded product image URLs
   competitorInsight: CompetitorInsight | null;
-  // Optional semantic fields consumed by recommendContentStrategy.
-  // Not yet bound to a Step1 input — kept optional for forward compatibility.
+  productKeywords: string[];
+  // Semantic fields inferred from Step1 product name/description and consumed by
+  // strategy recommendation, competitor insight, and note generation.
   category?: string;
   subcategory?: string;
   usageScenarios?: string[];
@@ -90,15 +92,17 @@ interface CreateContextType {
 }
 
 const defaultProductInfo: ProductInfo = {
-  name: "XX 品牌温和氨基酸洁面 100ml",
-  sellingPoints: ["温和", "小红瓶", "学生党"],
-  targetAudience: ["敏感肌", "学生"],
-  wordCount: "300 – 450 字",
-  priceRange: "¥59 – 79",
+  name: "",
+  description: "",
+  sellingPoints: [],
+  targetAudience: [],
+  wordCount: "",
+  priceRange: "",
   competitorLinks: "",
   importFromLibrary: false,
   productImages: [],
   competitorInsight: null,
+  productKeywords: [],
 };
 
 const defaultContentStrategy: ContentStrategy = {

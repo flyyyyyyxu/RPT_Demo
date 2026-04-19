@@ -4,33 +4,33 @@
  * Changes:
  * - "写作信息" → "商品信息"
  * - "5/6已填" → "本次预计消耗2额度" (moved to CreateLayout)
- * - Added "上传商品图" above 核心卖点
- * - Competitor links moved below product images, with "一键生成竞品洞察" button
+ * - Added 商品描述 and inferred product semantics for downstream generation
+ * - Competitor links with right-aligned "一键生成竞品洞察" button
  * - Tips moved inline as gray hint text after labels
  * - Right panel: competitor insight results (or placeholder)
  */
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import {
   ArrowRight,
   X,
   Plus,
-  Upload,
-  Image as ImageIcon,
   Search,
   Loader2,
   Clock,
-  CheckCircle2,
-  AlertCircle,
   Sparkles,
   FileText,
 } from "lucide-react";
 import CreateLayout from "@/components/create/CreateLayout";
 import { useCreateContext, type InsightItem } from "@/contexts/CreateContext";
 import { recommendContentStrategy } from "@/utils/recommendStrategy";
+import {
+  formatPriceRange,
+  inferProductSemantics,
+  parsePriceRange,
+} from "@/utils/productSemantics";
 import { toast } from "sonner";
 
 const SELLING_POINT_PRESETS = [
@@ -46,17 +46,32 @@ export default function CreateStep1() {
   const { productInfo, setProductInfo, contentStrategy, setContentStrategy } = useCreateContext();
 
   const [name, setName] = useState(productInfo.name);
+  const [description, setDescription] = useState(productInfo.description);
   const [sellingPoints, setSellingPoints] = useState<string[]>(productInfo.sellingPoints);
   const [audience, setAudience] = useState<string[]>(productInfo.targetAudience);
   const [wordCount, setWordCount] = useState(productInfo.wordCount);
-  const [priceRange, setPriceRange] = useState(productInfo.priceRange);
+  const initialPrice = parsePriceRange(productInfo.priceRange);
+  const [priceMin, setPriceMin] = useState(initialPrice.priceMin);
+  const [priceMax, setPriceMax] = useState(initialPrice.priceMax);
+  const [priceEdited, setPriceEdited] = useState(Boolean(productInfo.priceRange));
   const [competitorLinks, setCompetitorLinks] = useState(productInfo.competitorLinks);
-  const [importMode, setImportMode] = useState(productInfo.importFromLibrary);
   const [customPoint, setCustomPoint] = useState("");
-  const [productImages, setProductImages] = useState<string[]>(productInfo.productImages);
+  const [customAudience, setCustomAudience] = useState("");
   const [insightGenerated, setInsightGenerated] = useState(productInfo.competitorInsight?.generated ?? false);
   const [insightLoading, setInsightLoading] = useState(false);
   const [insights, setInsights] = useState<InsightItem[]>(productInfo.competitorInsight?.items ?? []);
+  const inferredSemantics = useMemo(
+    () => inferProductSemantics(name, description, sellingPoints, audience),
+    [name, description, sellingPoints, audience]
+  );
+  const priceRange = formatPriceRange(priceMin, priceMax);
+
+  useEffect(() => {
+    if (priceEdited || !name.trim() || !description.trim()) return;
+    if (!inferredSemantics.priceMin || !inferredSemantics.priceMax) return;
+    setPriceMin(inferredSemantics.priceMin);
+    setPriceMax(inferredSemantics.priceMax);
+  }, [description, inferredSemantics.priceMax, inferredSemantics.priceMin, name, priceEdited]);
 
   const toggleTag = (tag: string, list: string[], setList: (v: string[]) => void, max: number) => {
     if (list.includes(tag)) {
@@ -83,6 +98,21 @@ export default function CreateStep1() {
     setCustomPoint("");
   };
 
+  const addCustomAudience = () => {
+    const trimmed = customAudience.trim();
+    if (!trimmed) return;
+    if (audience.length >= 3) {
+      toast.error("最多 3 个目标人群");
+      return;
+    }
+    if (audience.includes(trimmed)) {
+      toast.error("已存在该人群");
+      return;
+    }
+    setAudience([...audience, trimmed]);
+    setCustomAudience("");
+  };
+
   const handleGenerateInsight = async () => {
     if (!competitorLinks.trim()) {
       toast.error("请先粘贴竞品链接");
@@ -96,7 +126,12 @@ export default function CreateStep1() {
         body: JSON.stringify({
           competitorLinks,
           productName: name,
+          productDescription: description,
+          productKeywords: inferredSemantics.productKeywords,
           sellingPoints,
+          category: inferredSemantics.category || productInfo.category,
+          subcategory: inferredSemantics.subcategory || productInfo.subcategory,
+          usageScenarios: inferredSemantics.usageScenarios,
         }),
       });
       const data = await res.json();
@@ -111,16 +146,13 @@ export default function CreateStep1() {
     }
   };
 
-  const handleUploadImage = () => {
-    // Simulate image upload
-    const mockUrl = `https://placehold.co/400x400/fff5f5/e8445a?text=商品图${productImages.length + 1}`;
-    setProductImages([...productImages, mockUrl]);
-    toast.success("图片上传成功");
-  };
-
   const handleNext = () => {
     if (!name.trim()) {
       toast.error("请填写商品名称");
+      return;
+    }
+    if (!description.trim()) {
+      toast.error("请填写商品描述");
       return;
     }
     if (sellingPoints.length === 0) {
@@ -129,29 +161,37 @@ export default function CreateStep1() {
     }
     setProductInfo({
       name,
+      description,
       sellingPoints,
       targetAudience: audience,
       wordCount,
       priceRange,
       competitorLinks,
-      importFromLibrary: importMode,
-      productImages,
+      importFromLibrary: false,
+      productImages: productInfo.productImages,
       competitorInsight: insightGenerated ? { generated: true, items: insights } : null,
-      category: productInfo.category,
-      subcategory: productInfo.subcategory,
-      usageScenarios: productInfo.usageScenarios,
+      productKeywords: inferredSemantics.productKeywords,
+      category: inferredSemantics.category || productInfo.category,
+      subcategory: inferredSemantics.subcategory || productInfo.subcategory,
+      usageScenarios: inferredSemantics.usageScenarios.length > 0
+        ? inferredSemantics.usageScenarios
+        : productInfo.usageScenarios,
     });
 
     // Recommend a content strategy based on current product info. Only overwrite
     // the user's Step2 picks when the recommendation actually changed — this lets
     // users go back to Step1 without losing manual edits they made on Step2.
     const recommended = recommendContentStrategy({
-      category: productInfo.category,
-      subcategory: productInfo.subcategory,
+      category: inferredSemantics.category || productInfo.category,
+      subcategory: inferredSemantics.subcategory || productInfo.subcategory,
       productName: name,
+      productDescription: description,
+      productKeywords: inferredSemantics.productKeywords,
       sellingPoints,
       targetAudience: audience,
-      usageScenarios: productInfo.usageScenarios,
+      usageScenarios: inferredSemantics.usageScenarios.length > 0
+        ? inferredSemantics.usageScenarios
+        : productInfo.usageScenarios,
       priceRange,
     });
     const prev = contentStrategy.recommendedStrategy;
@@ -191,13 +231,20 @@ export default function CreateStep1() {
         <div className="grid lg:grid-cols-5 gap-8">
           {/* Left: Form (3/5) */}
           <div className="lg:col-span-3 space-y-6">
-            {/* Import toggle */}
+            {/* Import entry */}
             <div className="flex items-center justify-between p-4 rounded-xl border border-border/60 bg-white">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium">从商品库导入</span>
                 <span className="text-[11px] px-2 py-0.5 rounded-md bg-primary/10 text-primary font-medium">推荐 · 省时</span>
               </div>
-              <Switch checked={importMode} onCheckedChange={setImportMode} />
+              <Button
+                variant="outline"
+                size="sm"
+                className="bg-white"
+                onClick={() => toast.info("功能暂未上线")}
+              >
+                导入
+              </Button>
             </div>
 
             {/* Product name */}
@@ -211,30 +258,15 @@ export default function CreateStep1() {
               />
             </FormField>
 
-            {/* Upload product images */}
-            <FormField label="上传商品图" hint="支持 JPG/PNG，建议正方形或 3:4 比例">
-              <div className="flex flex-wrap gap-3">
-                {productImages.map((img, i) => (
-                  <div key={i} className="relative w-20 h-20 rounded-xl border border-border/60 overflow-hidden group">
-                    <img src={img} alt={`商品图${i + 1}`} className="w-full h-full object-cover" />
-                    <button
-                      onClick={() => setProductImages(productImages.filter((_, idx) => idx !== i))}
-                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))}
-                {productImages.length < 5 && (
-                  <button
-                    onClick={handleUploadImage}
-                    className="w-20 h-20 rounded-xl border-2 border-dashed border-border hover:border-primary/40 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-primary transition-colors"
-                  >
-                    <Upload className="w-5 h-5" />
-                    <span className="text-[10px]">上传</span>
-                  </button>
-                )}
-              </div>
+            {/* Product description */}
+            <FormField label="商品描述" required hint="用于消除名称歧义，AI 会据此理解品类、场景和关键词">
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="例如：适合敏感肌早晚使用的温和洁面，主打氨基酸配方，洗后不紧绷，适合学生党和日常通勤。"
+                rows={4}
+                className="w-full px-4 py-3 rounded-xl border border-border/60 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all resize-none placeholder:text-muted-foreground/50"
+              />
             </FormField>
 
             {/* Selling points */}
@@ -263,24 +295,31 @@ export default function CreateStep1() {
                     ))}
                 </div>
               )}
-              <div className="flex gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <input
                   type="text"
                   value={customPoint}
                   onChange={(e) => setCustomPoint(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && addCustomPoint()}
                   placeholder="+ 自定义卖点"
-                  className="flex-1 px-3 py-2 rounded-lg border border-dashed border-border text-sm focus:outline-none focus:border-primary/40 transition-colors placeholder:text-muted-foreground/50"
+                  className="w-[124px] h-9 px-3.5 rounded-full border border-dashed border-border bg-white text-sm focus:outline-none focus:border-primary/40 transition-colors placeholder:text-muted-foreground/50"
                 />
-                <Button size="sm" variant="outline" onClick={addCustomPoint} className="shrink-0">
-                  <Plus className="w-3.5 h-3.5" />
-                </Button>
+                {customPoint.trim() && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    onClick={addCustomPoint}
+                    className="h-9 w-9 shrink-0 rounded-full bg-white"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </Button>
+                )}
               </div>
             </FormField>
 
             {/* Target audience */}
             <FormField label="目标人群" hint="选填，不超过 3 个效果最好">
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 mb-3">
                 {AUDIENCE_PRESETS.map((tag) => (
                   <TagChip
                     key={tag}
@@ -290,33 +329,113 @@ export default function CreateStep1() {
                   />
                 ))}
               </div>
+              {audience.filter((t) => !AUDIENCE_PRESETS.includes(t)).length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {audience
+                    .filter((t) => !AUDIENCE_PRESETS.includes(t))
+                    .map((tag) => (
+                      <TagChip
+                        key={tag}
+                        label={tag}
+                        selected
+                        onClick={() => setAudience(audience.filter((t) => t !== tag))}
+                      />
+                    ))}
+                </div>
+              )}
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  type="text"
+                  value={customAudience}
+                  onChange={(e) => setCustomAudience(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && addCustomAudience()}
+                  placeholder="+ 自定义人群"
+                  className="w-[124px] h-9 px-3.5 rounded-full border border-dashed border-border bg-white text-sm focus:outline-none focus:border-primary/40 transition-colors placeholder:text-muted-foreground/50"
+                />
+                {customAudience.trim() && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    onClick={addCustomAudience}
+                    className="h-9 w-9 shrink-0 rounded-full bg-white"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+              </div>
             </FormField>
 
             {/* Word count + Price */}
             <div className="grid sm:grid-cols-2 gap-5">
               <FormField label="期望字数" hint="选填">
                 <input
-                  type="text"
+                  type="number"
+                  inputMode="numeric"
+                  min="1"
                   value={wordCount}
-                  onChange={(e) => setWordCount(e.target.value)}
-                  placeholder="300 – 450 字"
+                  onChange={(e) => setWordCount(e.target.value.replace(/\D/g, ""))}
+                  placeholder="例如 400"
                   className="w-full px-4 py-3 rounded-xl border border-border/60 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all placeholder:text-muted-foreground/50"
                 />
               </FormField>
-              <FormField label="价格区间" hint="选填">
-                <input
-                  type="text"
-                  value={priceRange}
-                  onChange={(e) => setPriceRange(e.target.value)}
-                  placeholder="¥59 – 79"
-                  className="w-full px-4 py-3 rounded-xl border border-border/60 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all placeholder:text-muted-foreground/50"
-                />
+              <FormField label="价格区间" hint="选填 · 填写名称和描述后自动推荐">
+                <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min="0"
+                    value={priceMin}
+                    onChange={(e) => {
+                      setPriceEdited(true);
+                      setPriceMin(e.target.value.replace(/[^\d.]/g, ""));
+                    }}
+                    placeholder="最低价"
+                    className="w-full px-4 py-3 rounded-xl border border-border/60 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all placeholder:text-muted-foreground/50"
+                  />
+                  <span className="text-muted-foreground/60">-</span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min="0"
+                    value={priceMax}
+                    onChange={(e) => {
+                      setPriceEdited(true);
+                      setPriceMax(e.target.value.replace(/[^\d.]/g, ""));
+                    }}
+                    placeholder="最高价"
+                    className="w-full px-4 py-3 rounded-xl border border-border/60 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all placeholder:text-muted-foreground/50"
+                  />
+                </div>
               </FormField>
             </div>
 
-            {/* Competitor links - moved below images */}
-            <FormField label="参考竞品链接" hint="选填 · 最多 3 条，建议填写以获得更好的生成效果">
-              <div className="space-y-3">
+            {/* Competitor links */}
+            <FormField
+              label="参考竞品链接"
+              hint="选填 · 最多 3 条，建议填写以获得更好的生成效果"
+              action={
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2.5 rounded-lg bg-white border-border/70 text-xs font-medium text-muted-foreground hover:border-primary/20 hover:bg-primary/5 hover:text-primary"
+                  onClick={handleGenerateInsight}
+                  disabled={insightLoading}
+                >
+                  {insightLoading ? (
+                    <>
+                      <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                      分析中
+                    </>
+                  ) : (
+                    <>
+                      <Search className="w-3 h-3 mr-1" />
+                      生成竞品洞察
+                    </>
+                  )}
+                </Button>
+              }
+            >
+              <div>
                 <textarea
                   value={competitorLinks}
                   onChange={(e) => setCompetitorLinks(e.target.value)}
@@ -324,25 +443,6 @@ export default function CreateStep1() {
                   rows={3}
                   className="w-full px-4 py-3 rounded-xl border border-border/60 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all resize-none placeholder:text-muted-foreground/50"
                 />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="bg-white border-primary/20 text-primary hover:bg-primary/5"
-                  onClick={handleGenerateInsight}
-                  disabled={insightLoading}
-                >
-                  {insightLoading ? (
-                    <>
-                      <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                      正在分析竞品...
-                    </>
-                  ) : (
-                    <>
-                      <Search className="w-3.5 h-3.5 mr-1.5" />
-                      一键生成竞品洞察
-                    </>
-                  )}
-                </Button>
               </div>
             </FormField>
 
@@ -440,6 +540,8 @@ export default function CreateStep1() {
                 sellingPoints={sellingPoints}
                 audience={audience}
                 wordCount={wordCount}
+                description={description}
+                productKeywords={inferredSemantics.productKeywords}
               />
             </div>
 
@@ -470,23 +572,32 @@ export default function CreateStep1() {
 
 function AIUnderstanding({
   name,
+  description,
   sellingPoints,
   audience,
   wordCount,
+  productKeywords,
 }: {
   name: string;
+  description: string;
   sellingPoints: string[];
   audience: string[];
   wordCount: string;
+  productKeywords: string[];
 }) {
   const aiText = useMemo(() => {
     const parts: string[] = [];
     if (audience.length > 0) parts.push(`为 **${audience.join("、")}**`);
     if (name.trim()) parts.push(`推荐一款 **${name}**`);
+    if (description.trim()) {
+      const clipped = description.trim().slice(0, 28);
+      parts.push(`定位为 **${clipped}${description.trim().length > 28 ? "..." : ""}**`);
+    }
     if (sellingPoints.length > 0) parts.push(`主打 **${sellingPoints.join("、")}**`);
-    if (wordCount.trim()) parts.push(`字数约 **${wordCount.replace(/\s/g, "")}**`);
+    if (productKeywords.length > 0) parts.push(`关键词 **${productKeywords.slice(0, 5).join("、")}**`);
+    if (wordCount.trim()) parts.push(`字数约 **${wordCount.replace(/\s/g, "")}字**`);
     return parts.length > 0 ? `"我要${parts.join("，")} 的记忆点。"` : "";
-  }, [name, sellingPoints, audience, wordCount]);
+  }, [name, description, sellingPoints, audience, productKeywords, wordCount]);
 
   if (!aiText) {
     return (
@@ -559,21 +670,26 @@ function FormField({
   label,
   required,
   hint,
+  action,
   children,
 }: {
   label: string;
   required?: boolean;
   hint?: string;
+  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <div>
-      <div className="flex items-baseline gap-2 mb-2.5">
-        <label className="text-sm font-semibold text-foreground">
-          {label}
-          {required && <span className="text-primary ml-0.5">*</span>}
-        </label>
-        {hint && <span className="text-[11px] text-muted-foreground/60">{hint}</span>}
+      <div className="flex items-center justify-between gap-3 mb-2.5">
+        <div className="flex items-baseline gap-2 min-w-0">
+          <label className="text-sm font-semibold text-foreground shrink-0">
+            {label}
+            {required && <span className="text-primary ml-0.5">*</span>}
+          </label>
+          {hint && <span className="text-[11px] text-muted-foreground/60 truncate">{hint}</span>}
+        </div>
+        {action && <div className="shrink-0">{action}</div>}
       </div>
       {children}
     </div>

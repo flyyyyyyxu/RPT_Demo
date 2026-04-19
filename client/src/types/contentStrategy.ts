@@ -42,6 +42,8 @@ export interface ProductInfoForRec {
   category?: string;
   subcategory?: string;
   productName?: string;
+  productDescription?: string;
+  productKeywords?: string[];
   sellingPoints?: string[];
   targetAudience?: string[];
   usageScenarios?: string[];

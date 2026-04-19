@@ -183,6 +183,8 @@ export default function CreateStep2() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           productName: productInfo.name,
+          productDescription: productInfo.description,
+          productKeywords: productInfo.productKeywords,
           sellingPoints: productInfo.sellingPoints,
           targetAudience: productInfo.targetAudience,
           category: productInfo.category,
