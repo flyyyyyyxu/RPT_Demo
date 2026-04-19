@@ -138,6 +138,19 @@ function vitePluginApiRoutes(): Plugin {
         }
       });
 
+      server.middlewares.use("/api/competitor-insight-inferred", async (req, res, next) => {
+        if (req.method !== "POST") return next();
+        try {
+          const { default: handler } = await import("./api/competitor-insight-inferred");
+          (req as IncomingMessage & { body?: unknown }).body = await readJsonBody(req);
+          await handler(req, createApiResponse(res));
+        } catch (e: any) {
+          res.statusCode = 500;
+          res.setHeader("Content-Type", "application/json; charset=utf-8");
+          res.end(JSON.stringify({ error: e.message ?? "Unexpected API error" }));
+        }
+      });
+
       server.middlewares.use("/api/generate-notes", async (req, res, next) => {
         if (req.method !== "POST") return next();
         try {

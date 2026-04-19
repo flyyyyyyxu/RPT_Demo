@@ -54,7 +54,7 @@ const BODY_STYLE_OPTIONS = [
   { id: "对比分析式", desc: "通过差异、优缺点和适合对象展开说明。" },
   { id: "情绪共振式", desc: "从感受、吐槽或共鸣切入，再引出产品。" },
 ];
-const STRATEGY_TEMPLATES = ["新品首发", "双 11 冲量", "老客复购", "专业人群"];
+const STRATEGY_TEMPLATES = ["爆款种草", "真实测评", "平替对比", "口碑复购", "场景带入", "促转化"];
 const CUSTOM_FIELD_MAX_LENGTH = 50;
 
 // Ultimate UI fallback used when the user navigated straight to Step2 without
@@ -561,7 +561,7 @@ export default function CreateStep2() {
                 {STRATEGY_TEMPLATES.map((tpl) => (
                   <button
                     key={tpl}
-                    onClick={() => toast.info(`已套用「${tpl}」策略模板`)}
+                    onClick={() => toast.info("功能暂未上线")}
                     className="px-4 py-2 rounded-xl text-sm font-medium border border-border/60 bg-white hover:border-primary/20 hover:bg-primary/5 transition-all"
                   >
                     {tpl}

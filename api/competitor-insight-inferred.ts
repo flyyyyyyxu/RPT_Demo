@@ -105,10 +105,11 @@ ${OUTPUT_EXAMPLE}`;
       return res.status(502).json({ error: `MiniMax returned non-JSON: ${mmText.slice(0, 300)}` });
     }
 
-    const content: string =
+    const rawContent: string =
       mmData.choices?.[0]?.message?.content ??
       mmData.choices?.[0]?.message?.reasoning_content ??
       "";
+    const content = rawContent.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
 
     if (!content) {
       return res.status(500).json({

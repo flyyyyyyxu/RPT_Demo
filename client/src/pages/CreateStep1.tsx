@@ -39,6 +39,15 @@ import {
   type CategoryPreset,
 } from "@/config/productCategoryPresets";
 import { toast } from "sonner";
+import type { ProductUnderstandingResult } from "../../../shared/types";
+
+type ResolvedProductUnderstanding = {
+  matchedCategoryId?: string;
+  category?: string;
+  subcategory?: string;
+  productKeywords: string[];
+  usageScenarios: string[];
+};
 
 function applyOverrides(
   basePoints: string[],
@@ -56,6 +65,29 @@ function applyOverrides(
     sellingPoints: Array.from(new Set([...basePoints, ...extraPoints])),
     audiences: Array.from(new Set([...baseAudiences, ...extraAudiences])),
   };
+}
+
+function splitPresetName(preset?: CategoryPreset | null): {
+  category?: string;
+  subcategory?: string;
+} {
+  if (!preset || preset.id === FALLBACK_PRESET.id) return {};
+  const [category, ...rest] = preset.name.split("-");
+  return {
+    category: category?.trim() || undefined,
+    subcategory: rest.join("-").trim() || undefined,
+  };
+}
+
+function uniqueLimit(values: Array<string | undefined>, limit: number): string[] {
+  return Array.from(
+    new Set(
+      values
+        .filter((v): v is string => typeof v === "string")
+        .map((v) => v.trim())
+        .filter(Boolean)
+    )
+  ).slice(0, limit);
 }
 
 
@@ -87,6 +119,14 @@ export default function CreateStep1() {
   // Local-only preset match for realtime candidate switching. LLM understanding
   // is deferred to Step1 handleNext (Step E) — this preview stays free and instant.
   const matchedPreset = useMemo<CategoryPreset | null>(() => {
+    const contextStillMatches =
+      productInfo.name === name &&
+      productInfo.description === description &&
+      Boolean(productInfo.matchedCategoryId);
+    if (contextStillMatches) {
+      return getPresetById(productInfo.matchedCategoryId!) ?? null;
+    }
+
     const r = inferProductUnderstandingLocal({
       productName: name,
       productDescription: description,
@@ -95,7 +135,7 @@ export default function CreateStep1() {
     });
     if (!r) return null;
     return getPresetById(r.matchedCategoryId) ?? null;
-  }, [name, description, sellingPoints, audience]);
+  }, [productInfo.name, productInfo.description, productInfo.matchedCategoryId, name, description, sellingPoints, audience]);
 
   const { sellingPointCandidates, audienceCandidates } = useMemo(() => {
     const preset = matchedPreset ?? FALLBACK_PRESET;
@@ -156,6 +196,61 @@ export default function CreateStep1() {
     setCustomAudience("");
   };
 
+  const resolveProductUnderstanding = async (): Promise<ResolvedProductUnderstanding> => {
+    let result: ProductUnderstandingResult | null = null;
+
+    try {
+      const res = await fetch("/api/product-understanding", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productName: name,
+          productDescription: description,
+          sellingPoints,
+          targetAudience: audience,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.matched && data.result) {
+        result = data.result;
+      }
+    } catch {
+      // Keep the flow smooth: network/API errors fall back to local inference.
+    }
+
+    if (!result) {
+      result = inferProductUnderstandingLocal({
+        productName: name,
+        productDescription: description,
+        sellingPoints,
+        targetAudience: audience,
+      });
+    }
+
+    const preset = result?.matchedCategoryId
+      ? getPresetById(result.matchedCategoryId)
+      : matchedPreset;
+    const presetFields = splitPresetName(preset);
+
+    return {
+      matchedCategoryId: preset?.id !== FALLBACK_PRESET.id ? preset?.id : undefined,
+      category: presetFields.category ?? inferredSemantics.category ?? productInfo.category,
+      subcategory: presetFields.subcategory ?? inferredSemantics.subcategory ?? productInfo.subcategory,
+      productKeywords: uniqueLimit(
+        [...(result?.productKeywords ?? []), ...inferredSemantics.productKeywords],
+        10
+      ),
+      usageScenarios: uniqueLimit(
+        [
+          ...(result?.usageScenarios ?? []),
+          ...inferredSemantics.usageScenarios,
+          ...(productInfo.usageScenarios ?? []),
+        ],
+        6
+      ),
+    };
+  };
+
   const handleGenerateInsight = async () => {
     if (!competitorLinks.trim()) {
       toast.error("请先粘贴竞品链接");
@@ -163,6 +258,7 @@ export default function CreateStep1() {
     }
     setInsightLoading(true);
     try {
+      const resolved = await resolveProductUnderstanding();
       const res = await fetch("/api/competitor-insight", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -170,11 +266,11 @@ export default function CreateStep1() {
           competitorLinks,
           productName: name,
           productDescription: description,
-          productKeywords: inferredSemantics.productKeywords,
+          productKeywords: resolved.productKeywords,
           sellingPoints,
-          category: inferredSemantics.category || productInfo.category,
-          subcategory: inferredSemantics.subcategory || productInfo.subcategory,
-          usageScenarios: inferredSemantics.usageScenarios,
+          category: resolved.category,
+          subcategory: resolved.subcategory,
+          usageScenarios: resolved.usageScenarios,
         }),
       });
       const data = await res.json();
@@ -195,97 +291,66 @@ export default function CreateStep1() {
     if (sellingPoints.length === 0) { toast.error("请至少选择一个核心卖点"); return; }
 
     setNextLoading(true);
-    let matchedCategoryId: string | undefined;
-    let llmKeywords: string[] = [];
-    let llmScenarios: string[] = [];
-
-    // 1. Try LLM understanding.
     try {
-      const res = await fetch("/api/product-understanding", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productName: name, productDescription: description, sellingPoints, targetAudience: audience }),
+      const resolved = await resolveProductUnderstanding();
+
+      setProductInfo({
+        name,
+        description,
+        sellingPoints,
+        targetAudience: audience,
+        wordCount,
+        priceRange,
+        competitorLinks,
+        importFromLibrary: false,
+        productImages: productInfo.productImages,
+        competitorInsight: insightGenerated ? { generated: true, items: insights } : null,
+        productKeywords: resolved.productKeywords,
+        category: resolved.category,
+        subcategory: resolved.subcategory,
+        usageScenarios: resolved.usageScenarios,
+        matchedCategoryId: resolved.matchedCategoryId,
       });
-      const data = await res.json();
-      if (res.ok && data.matched && data.result) {
-        matchedCategoryId = data.result.matchedCategoryId;
-        llmKeywords = data.result.productKeywords ?? [];
-        llmScenarios = data.result.usageScenarios ?? [];
-      }
-    } catch {
-      // Network error → fall through to local
+
+      // matchedCategoryId lets recommender skip fragile category normalization.
+      const recommended = recommendContentStrategy({
+        matchedCategoryId: resolved.matchedCategoryId,
+        category: resolved.category,
+        subcategory: resolved.subcategory,
+        productName: name,
+        productDescription: description,
+        productKeywords: resolved.productKeywords,
+        sellingPoints,
+        targetAudience: audience,
+        usageScenarios: resolved.usageScenarios,
+        priceRange,
+      });
+      const prev = contentStrategy.recommendedStrategy;
+      const recommendationChanged =
+        !prev ||
+        prev.noteType !== recommended.noteType ||
+        prev.toneStyle !== recommended.toneStyle ||
+        prev.titleStyle !== recommended.titleStyle ||
+        prev.bodyStyle !== recommended.bodyStyle;
+
+      setContentStrategy({
+        ...contentStrategy,
+        recommendedStrategy: recommended,
+        ...(recommendationChanged && {
+          noteType: recommended.noteType,
+          toneStyle: recommended.toneStyle,
+          titleStyle: recommended.titleStyle,
+          articleStyle: recommended.bodyStyle,
+          bodyStyle: recommended.bodyStyle,
+        }),
+      });
+
+      navigate("/create/strategy");
+    } catch (e: any) {
+      toast.error(e.message ?? "商品分析失败，请重试");
+    } finally {
+      setNextLoading(false);
     }
-
-    // 2. Local fallback when LLM didn't match.
-    if (!matchedCategoryId) {
-      const local = inferProductUnderstandingLocal({ productName: name, productDescription: description, sellingPoints, targetAudience: audience });
-      if (local) {
-        matchedCategoryId = local.matchedCategoryId;
-        llmKeywords = local.productKeywords;
-      }
-    }
-
-    // 3. Merge semantics: LLM/local enriches inferredSemantics (existing price logic unchanged).
-    const mergedKeywords = Array.from(new Set([...llmKeywords, ...inferredSemantics.productKeywords])).slice(0, 10);
-    const mergedScenarios = llmScenarios.length > 0
-      ? llmScenarios
-      : inferredSemantics.usageScenarios.length > 0
-        ? inferredSemantics.usageScenarios
-        : productInfo.usageScenarios ?? [];
-
-    setProductInfo({
-      name,
-      description,
-      sellingPoints,
-      targetAudience: audience,
-      wordCount,
-      priceRange,
-      competitorLinks,
-      importFromLibrary: false,
-      productImages: productInfo.productImages,
-      competitorInsight: insightGenerated ? { generated: true, items: insights } : null,
-      productKeywords: mergedKeywords,
-      category: inferredSemantics.category || productInfo.category,
-      subcategory: inferredSemantics.subcategory || productInfo.subcategory,
-      usageScenarios: mergedScenarios,
-      matchedCategoryId,
-    });
-
-    // 4. Recommend strategy — matchedCategoryId lets recommender skip normalize.
-    const recommended = recommendContentStrategy({
-      matchedCategoryId,
-      category: inferredSemantics.category || productInfo.category,
-      subcategory: inferredSemantics.subcategory || productInfo.subcategory,
-      productName: name,
-      productDescription: description,
-      productKeywords: mergedKeywords,
-      sellingPoints,
-      targetAudience: audience,
-      usageScenarios: mergedScenarios,
-      priceRange,
-    });
-    const prev = contentStrategy.recommendedStrategy;
-    const recommendationChanged =
-      !prev ||
-      prev.noteType !== recommended.noteType ||
-      prev.toneStyle !== recommended.toneStyle ||
-      prev.titleStyle !== recommended.titleStyle ||
-      prev.bodyStyle !== recommended.bodyStyle;
-
-    setContentStrategy({
-      ...contentStrategy,
-      recommendedStrategy: recommended,
-      ...(recommendationChanged && {
-        noteType: recommended.noteType,
-        toneStyle: recommended.toneStyle,
-        titleStyle: recommended.titleStyle,
-        articleStyle: recommended.bodyStyle,
-        bodyStyle: recommended.bodyStyle,
-      }),
-    });
-
-    setNextLoading(false);
-    navigate("/create/strategy");
   };
 
   return (
@@ -616,7 +681,6 @@ export default function CreateStep1() {
                 audience={audience}
                 wordCount={wordCount}
                 description={description}
-                productKeywords={inferredSemantics.productKeywords}
               />
             </div>
 
@@ -651,14 +715,12 @@ function AIUnderstanding({
   sellingPoints,
   audience,
   wordCount,
-  productKeywords,
 }: {
   name: string;
   description: string;
   sellingPoints: string[];
   audience: string[];
   wordCount: string;
-  productKeywords: string[];
 }) {
   const aiText = useMemo(() => {
     const parts: string[] = [];
@@ -669,10 +731,9 @@ function AIUnderstanding({
       parts.push(`定位为 **${clipped}${description.trim().length > 28 ? "..." : ""}**`);
     }
     if (sellingPoints.length > 0) parts.push(`主打 **${sellingPoints.join("、")}**`);
-    if (productKeywords.length > 0) parts.push(`关键词 **${productKeywords.slice(0, 5).join("、")}**`);
     if (wordCount.trim()) parts.push(`字数约 **${wordCount.replace(/\s/g, "")}字**`);
     return parts.length > 0 ? `"我要${parts.join("，")} 的记忆点。"` : "";
-  }, [name, description, sellingPoints, audience, productKeywords, wordCount]);
+  }, [name, description, sellingPoints, audience, wordCount]);
 
   if (!aiText) {
     return (

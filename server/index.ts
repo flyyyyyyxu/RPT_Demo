@@ -4,6 +4,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import competitorInsightHandler from "../api/competitor-insight";
+import competitorInsightInferredHandler from "../api/competitor-insight-inferred";
 import generateNotesHandler from "../api/generate-notes";
 import productUnderstandingHandler from "../api/product-understanding";
 
@@ -49,6 +50,7 @@ async function startServer() {
 
   app.use(express.json({ limit: "1mb" }));
   app.post("/api/competitor-insight", competitorInsightHandler);
+  app.post("/api/competitor-insight-inferred", competitorInsightInferredHandler);
   app.post("/api/generate-notes", generateNotesHandler);
   app.post("/api/product-understanding", productUnderstandingHandler);
 
