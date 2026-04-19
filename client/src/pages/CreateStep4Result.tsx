@@ -12,7 +12,7 @@
  * - 6.3 再次生成 → 重新生成（消耗2额度）
  * - 6.4 卡片视角旁有编辑按钮
  */
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,7 @@ import {
   Zap,
   BarChart3,
   AlertTriangle,
+  Loader2,
 } from "lucide-react";
 import CreateLayout from "@/components/create/CreateLayout";
 import { useCreateContext } from "@/contexts/CreateContext";
@@ -58,83 +59,6 @@ interface VersionData {
   suggestion: string;
 }
 
-const VERSIONS: VersionData[] = [
-  {
-    id: "v1",
-    label: "V1",
-    style: "亲切种草",
-    stars: 5,
-    title: "姐妹们！这瓶洁面真的是我今年最爱没有之一",
-    wordCount: 418,
-    topicCount: 4,
-    body: `作为敏感肌+学生党，我对洁面真的挑到不行…
-
-最近用的这瓶 XX 氨基酸洁面，是真的 温和到让我这种爆痘期都能用。
-
-· 用感：泡沫细腻，洗完脸不拔干
-· 成分：全氨基酸系，孕期也能用
-· 性价比：60 块一大瓶，学生党友好
-
-说实话一开始没抱太大期望，毕竟这个价位嘛。但用了两周，早上洗完脸摸着滑滑的，也没有紧绷感。
-
-我现在早晚都用它，配合温水按摩一分钟，黑头都感觉少了一点（可能心理作用哈哈）。
-
-总之如果你也是敏感肌，预算有限，真的可以试试这瓶，不踩！`,
-    tags: ["#敏感肌洁面", "#学生党平价", "#早八人通勤", "#氨基酸洁面", "#敏感肌护肤"],
-    metrics: { hotWords: 4, sentiment: 92, predictLikes: "1.2k", riskWords: 0 },
-    suggestion: "建议：在第 2 段补充'用量感'（1 泵够用 or 半泵），可进一步提升收藏率。",
-  },
-  {
-    id: "v2",
-    label: "V2",
-    style: "干货科普",
-    stars: 4,
-    title: "氨基酸 vs 皂基，敏感肌别再冲错了",
-    wordCount: 462,
-    topicCount: 3,
-    body: `作为敏感肌+学生党，我对洁面真的挑到不行…
-
-最近用的这瓶 XX 氨基酸洁面，是真的 温和到让我这种爆痘期都能用。
-
-· 用感：泡沫细腻，洗完脸不拔干
-· 成分：全氨基酸系，孕期也能用
-· 性价比：60 块一大瓶，学生党友好
-
-说实话一开始没抱太大期望，毕竟这个价位嘛。但用了两周，早上洗完脸摸着滑滑的，也没有紧绷感。
-
-现在早半瓶都用完了，配合温水按摩一分钟，黑头都感觉少了一点（可能是心理作用哈哈）。
-
-总之如果你也是敏感肌，预算有限，真的可以试试这瓶，不踩！`,
-    tags: ["#敏感肌洁面", "#学生党平价", "#早八人通勤", "#敏感肌护肤"],
-    metrics: { hotWords: 4, sentiment: 92, predictLikes: "1.2k", riskWords: 0 },
-    suggestion: "建议：在第 2 段补充'用量感'（1 泵够用 or 半泵），可进一步提升收藏率。",
-  },
-  {
-    id: "v3",
-    label: "V3",
-    style: "真实体验",
-    stars: 5,
-    title: "一月 30 天试用报告 · 敏感肌的真实感受",
-    wordCount: 386,
-    topicCount: 5,
-    body: `作为敏感肌+学生党，我对洁面真的挑到不行…
-
-最近用的这瓶 XX 氨基酸洁面，是真的 温和到让我这种爆痘期都能用。
-
-· 用感：泡沫细腻，洗完脸不拔干
-· 成分：全氨基酸系，孕期也能用
-· 性价比：60 块一大瓶，学生党友好
-
-说实话一开始没抱太大期望，毕竟这个价位嘛。但用了两周，早上洗完脸摸着滑滑的，也没有紧绷感。
-
-现在早半瓶都用完了，配合温水按摩一分钟，黑头都感觉少了一点（可能是心理作用哈哈）。
-
-总之如果你也是敏感肌，预算有限，真的可以试试这瓶，不踩！`,
-    tags: ["#敏感肌洁面", "#学生党平价", "#温和洁面", "#早八人通勤", "#敏感肌护肤"],
-    metrics: { hotWords: 4, sentiment: 92, predictLikes: "1.2k", riskWords: 0 },
-    suggestion: "建议：在第 2 段补充'用量感'（1 泵够用 or 半泵），可进一步提升收藏率。",
-  },
-];
 
 const QUICK_TWEAKS = [
   "更口语化",
@@ -145,10 +69,93 @@ const QUICK_TWEAKS = [
 
 export default function CreateStep4Result() {
   const [, navigate] = useLocation();
+  const { productInfo, contentStrategy } = useCreateContext();
   const [activeVersion, setActiveVersion] = useState(0);
   const [tweakVersion, setTweakVersion] = useState(0);
   const [customTweak, setCustomTweak] = useState("");
   const [showCustomInput, setShowCustomInput] = useState(false);
+  const [versions, setVersions] = useState<VersionData[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [genError, setGenError] = useState<string | null>(null);
+
+  const generateNotes = useCallback(async () => {
+    setLoading(true);
+    setGenError(null);
+    try {
+      const res = await fetch("/api/generate-notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productInfo, contentStrategy }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error ?? "生成失败");
+      setVersions(data.versions);
+    } catch (e: any) {
+      setGenError(e.message ?? "笔记生成失败，请重试");
+      toast.error("笔记生成失败，请重试");
+    } finally {
+      setLoading(false);
+    }
+  }, [productInfo, contentStrategy]);
+
+  useEffect(() => {
+    generateNotes();
+  }, []);
+
+  if (loading) {
+    return (
+      <CreateLayout currentStep={4} costCredits={0}>
+        <div className="max-w-7xl mx-auto px-4 lg:px-6 py-24 flex flex-col items-center justify-center gap-6">
+          <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+            <Sparkles className="w-8 h-8 text-primary animate-pulse" />
+          </div>
+          <div className="text-center">
+            <h2 className="text-xl font-bold mb-2">AI 正在创作你的笔记…</h2>
+            <p className="text-sm text-muted-foreground">正在生成 3 个不同风格的版本，请稍候（约 10-20 秒）</p>
+          </div>
+          <div className="w-64 h-1.5 bg-secondary rounded-full overflow-hidden">
+            <motion.div
+              className="h-full bg-primary rounded-full"
+              initial={{ width: "0%" }}
+              animate={{ width: "90%" }}
+              transition={{ duration: 15, ease: "easeOut" }}
+            />
+          </div>
+          <div className="flex gap-2 mt-2">
+            {["亲切种草", "干货科普", "真实日记"].map((s, i) => (
+              <motion.span
+                key={s}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.3 }}
+                className="text-xs px-3 py-1.5 rounded-full bg-secondary text-muted-foreground"
+              >
+                {s}
+              </motion.span>
+            ))}
+          </div>
+        </div>
+      </CreateLayout>
+    );
+  }
+
+  if (genError || !versions) {
+    return (
+      <CreateLayout currentStep={4} costCredits={0}>
+        <div className="max-w-7xl mx-auto px-4 lg:px-6 py-24 flex flex-col items-center justify-center gap-4">
+          <AlertTriangle className="w-12 h-12 text-amber-400" />
+          <h2 className="text-lg font-bold">生成遇到了问题</h2>
+          <p className="text-sm text-muted-foreground text-center max-w-sm">
+            {genError || "未知错误"}
+          </p>
+          <Button onClick={generateNotes} className="bg-primary text-white mt-2">
+            <RefreshCw className="w-4 h-4 mr-2" />
+            重新生成
+          </Button>
+        </div>
+      </CreateLayout>
+    );
+  }
 
   return (
     <CreateLayout currentStep={4} costCredits={0}>
@@ -168,7 +175,7 @@ export default function CreateStep4Result() {
 
         {/* Row 1: Version summary cards */}
         <div className="grid grid-cols-3 gap-4 mb-6">
-          {VERSIONS.map((v, i) => (
+          {versions.map((v, i) => (
             <button
               key={v.id}
               onClick={() => setActiveVersion(i)}
@@ -207,7 +214,7 @@ export default function CreateStep4Result() {
 
         {/* Row 2: Feed preview cards */}
         <div className="grid grid-cols-3 gap-4 mb-6">
-          {VERSIONS.map((v, i) => (
+          {versions.map((v, i) => (
             <motion.div
               key={v.id}
               initial={{ opacity: 0, y: 15 }}
@@ -283,7 +290,7 @@ export default function CreateStep4Result() {
 
         {/* Row 3: AI Insight panels */}
         <div className="grid grid-cols-3 gap-4 mb-6">
-          {VERSIONS.map((v, i) => (
+          {versions.map((v, i) => (
             <div
               key={v.id}
               className="rounded-2xl border border-border/60 bg-white p-4 shadow-sm"
@@ -342,7 +349,7 @@ export default function CreateStep4Result() {
 
               {/* Version tabs */}
               <div className="flex gap-2 mb-4">
-                {VERSIONS.map((v, i) => (
+                {versions.map((v, i) => (
                   <button
                     key={v.id}
                     onClick={() => setTweakVersion(i)}
@@ -416,7 +423,7 @@ export default function CreateStep4Result() {
                 <span className="text-[11px] text-primary/60 ml-1">（消耗 1 额度）</span>
               </button>
               <button
-                onClick={() => toast.info("重新生成（消耗 2 额度）")}
+                onClick={generateNotes}
                 className="w-full text-left px-4 py-2.5 rounded-xl border border-primary/20 text-sm font-medium text-primary hover:bg-primary/5 transition-colors"
               >
                 重新生成

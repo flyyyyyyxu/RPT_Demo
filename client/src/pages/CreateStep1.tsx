@@ -39,14 +39,6 @@ const AUDIENCE_PRESETS = [
   "敏感肌", "学生", "职场新人", "宝妈", "熬夜党", "油皮", "干皮",
 ];
 
-// Mock competitor insight data
-const MOCK_INSIGHTS: InsightItem[] = [
-  { label: "用户高频痛点", detail: "「闷痘」— 清洁力不够导致反复闷痘", status: "pending" },
-  { label: "热词", detail: "「学生党」— 高频出现在爆文标题中", status: "adopted" },
-  { label: "情感锚点", detail: "「早八通勤」— 快速洁面场景共鸣强", status: "adopted" },
-  { label: "成分对比", detail: "「氨基酸 vs 皂基」— 科普型内容互动率高", status: "pending" },
-  { label: "价格锚点", detail: "「60块一大瓶」— 性价比话术转化率高", status: "pending" },
-];
 
 export default function CreateStep1() {
   const [, navigate] = useLocation();
@@ -90,19 +82,32 @@ export default function CreateStep1() {
     setCustomPoint("");
   };
 
-  const handleGenerateInsight = () => {
+  const handleGenerateInsight = async () => {
     if (!competitorLinks.trim()) {
       toast.error("请先粘贴竞品链接");
       return;
     }
     setInsightLoading(true);
-    // Simulate AI analysis
-    setTimeout(() => {
-      setInsights(MOCK_INSIGHTS);
+    try {
+      const res = await fetch("/api/competitor-insight", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          competitorLinks,
+          productName: name,
+          sellingPoints,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error ?? "生成失败");
+      setInsights(data.insights);
       setInsightGenerated(true);
-      setInsightLoading(false);
       toast.success("竞品洞察生成完成");
-    }, 2500);
+    } catch (e: any) {
+      toast.error(e.message ?? "竞品洞察生成失败，请重试");
+    } finally {
+      setInsightLoading(false);
+    }
   };
 
   const handleUploadImage = () => {
