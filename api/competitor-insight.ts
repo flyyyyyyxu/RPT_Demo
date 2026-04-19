@@ -1,10 +1,12 @@
 import type { CompetitorInsightRequest, CompetitorInsightResponse, CompetitorInsightItem } from "../shared/types";
 
 const STEP1_ANALYSIS_RULES = [
-  "主要分析竞品内容本身（用户痛点、爆款话术、情感锚点、内容结构）",
-  "少量分析竞品与我方商品的关系（差异化机会、可借鉴点）",
-  "每条洞察都要具体、可操作，直接指导文案创作",
-  "不要复述抓取状态、HTTP状态码、无法访问等技术提示",
+  "从小红书商业化内容视角分析竞品，重点判断其在信息流/搜索场景中为什么容易吸引点击与转化",
+  "优先拆解竞品的核心卖点表达、目标人群指向、种草钩子、场景包装与行动引导方式",
+  "结合小红书用户决策链路，提炼哪些内容更容易建立真实感、降低广告感、提升购买意愿",
+  "分析竞品内容与我方商品之间的可借鉴点和差异化机会，但重点仍放在指导我方文案怎么写",
+  "每条洞察都要落到可直接复用的文案建议，避免空泛评价，尽量指出建议强化或规避的表达方式",
+  "不要输出抓取状态、技术异常、HTTP状态码、无法访问等提示，不要写成技术分析报告",
 ];
 
 const STEP1_OUTPUT_EXAMPLE =
@@ -118,7 +120,7 @@ async function fetchUrlContent(url: string): Promise<string> {
       return "非文本内容，跳过";
     }
     const html = await res.text();
-    const text = htmlToText(html).slice(0, 2500);
+    const text = htmlToText(html).slice(0, 6000);
     return text || "页面内容为空";
   } catch (e: any) {
     return `抓取失败：${e.message}`;
@@ -156,20 +158,33 @@ export default async function handler(req: any, res: any) {
       urlSection = `【竞品关键词/描述】${competitorLinks}`;
     }
 
-    const prompt = `你是小红书内容竞品分析专家。
+    const prompt = `你是小红书商业化内容策略专家，任务不是泛泛点评竞品，而是站在“小红书广告内容产品/商家投放辅助工具”的视角，输出能直接指导我方生成文案的竞品洞察。
 
 【我方商品】
 名称：${productName}
 卖点：${sellingPoints.join("、")}
 
-${urlSection ? `【竞品内容】\n${urlSection}` : "（未提供竞品链接，请基于品类通用知识分析）"}
+${urlSection ? `【竞品内容】\n${urlSection}` : "（未提供竞品链接，请基于品类通用内容表现分析）"}
+
+你的分析目标：
+1. 判断竞品内容为什么更容易在小红书信息流/搜索场景中被点击、被信任、被转化
+2. 识别竞品在卖点表达、标题钩子、场景带入、口吻真实感、种草节奏、行动引导上的有效写法
+3. 输出的每条洞察都必须能反向指导“我方文案该怎么写、该强调什么、该避免什么”
 
 分析要求：
 ${STEP1_ANALYSIS_RULES.map((rule, i) => `${i + 1}. ${rule}`).join("\n")}
 
-只返回JSON数组，不要任何其他文字：
-${STEP1_OUTPUT_EXAMPLE}
-（共5条，label优先从：用户高频痛点/爆款话术/情感锚点/竞品差异/可借鉴结构/价格话术/场景共鸣 中选取）`;
+输出要求：
+- 只返回 JSON 数组，不要任何解释、标题、前后缀
+- 共返回 5 条
+- 每条都包含 label 和 detail 两个字段
+- label 必须优先从以下分类中选择：点击钩子/卖点表达/人群指向/场景包装/真实感来源/转化引导/差异化机会
+- detail 必须是具体、可执行的内容策略建议，直接服务于我方后续文案生成
+- 不要写“竞品做得很好”“可以参考”这类空话
+- 不要复述链接抓取失败、网页异常、无法访问等技术信息
+
+返回格式示例：
+${STEP1_OUTPUT_EXAMPLE}`;
 
     const mmRes = await fetch("https://api.minimax.chat/v1/chat/completions", {
       method: "POST",
