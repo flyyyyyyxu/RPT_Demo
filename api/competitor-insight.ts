@@ -37,7 +37,7 @@ export default async function handler(request: Request): Promise<Response> {
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: "MiniMax-Text-01",
+      model: "MiniMax-M2.7",
       messages: [
         { role: "system", content: "只输出JSON数组，不输出任何其他文字。" },
         { role: "user", content: prompt },
