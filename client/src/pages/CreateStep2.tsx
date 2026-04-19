@@ -17,6 +17,8 @@ import {
   Search,
   Zap,
   Plus,
+  Loader2,
+  Sparkles,
 } from "lucide-react";
 import CreateLayout from "@/components/create/CreateLayout";
 import { useCreateContext, type InsightItem } from "@/contexts/CreateContext";
@@ -62,15 +64,6 @@ const UI_FALLBACK_STRATEGY = FALLBACK_STRATEGY;
 
 const hasOption = (options: Array<{ id: string }>, value: string) =>
   options.some((option) => option.id === value);
-
-// Mock insights from Step1 (would come from context in real app)
-const DEFAULT_INSIGHTS: InsightItem[] = [
-  { label: "用户高频痛点", detail: "「闷痘」", status: "pending" },
-  { label: "热词", detail: "「学生党」", status: "adopted" },
-  { label: "情感锚点", detail: "「早八通勤」", status: "adopted" },
-  { label: "成分对比", detail: "「氨基酸 vs 皂基」", status: "pending" },
-  { label: "价格锚点", detail: "「60块一大瓶」", status: "pending" },
-];
 
 // Preview templates: driven entirely by productInfo so output adapts to any category.
 // Title varies by titleStyle; opening = hook(bodyStyle) + tail(noteType) — 5×5 combinations.
@@ -129,7 +122,7 @@ const OPENING_TAILS: Record<string, (c: PreviewCtx) => string> = {
 
 export default function CreateStep2() {
   const [, navigate] = useLocation();
-  const { productInfo, contentStrategy, setContentStrategy } = useCreateContext();
+  const { productInfo, setProductInfo, contentStrategy, setContentStrategy } = useCreateContext();
 
   // Prefer the strategy recommended from Step1; fall back to global defaults
   // when user navigates directly to Step2 with no recommendation in context.
@@ -155,17 +148,59 @@ export default function CreateStep2() {
   const [rhythmLevel, setRhythmLevel] = useState(contentStrategy.rhythmLevel);
   const [autoTags, setAutoTags] = useState(contentStrategy.autoTags);
 
-  // Competitor insights from Step1 or defaults
+  // Single source of truth is productInfo.competitorInsight. Local state
+  // mirrors it for UI responsiveness; every mutation writes back to context
+  // so Step1 ↔ Step2 navigation preserves both the items and the user's
+  // adoption choices.
   const [insights, setInsights] = useState<InsightItem[]>(
-    productInfo.competitorInsight?.items ?? DEFAULT_INSIGHTS
+    productInfo.competitorInsight?.items ?? []
   );
+  const [insightLoading, setInsightLoading] = useState(false);
 
-  // Keep insights in sync when user goes back to Step1 and regenerates.
   useEffect(() => {
     if (productInfo.competitorInsight?.items) {
       setInsights(productInfo.competitorInsight.items);
     }
   }, [productInfo.competitorInsight]);
+
+  const persistInsights = (next: InsightItem[]) => {
+    setInsights(next);
+    setProductInfo({
+      ...productInfo,
+      competitorInsight: { generated: true, items: next },
+    });
+  };
+
+  const handleGenerateInferredInsight = async () => {
+    if (!productInfo.name.trim() || productInfo.sellingPoints.length === 0) {
+      toast.error("请先在上一步填写商品名称和核心卖点");
+      return;
+    }
+    setInsightLoading(true);
+    try {
+      const res = await fetch("/api/competitor-insight-inferred", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productName: productInfo.name,
+          sellingPoints: productInfo.sellingPoints,
+          targetAudience: productInfo.targetAudience,
+          category: productInfo.category,
+          subcategory: productInfo.subcategory,
+          usageScenarios: productInfo.usageScenarios,
+          priceRange: productInfo.priceRange,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error ?? "生成失败");
+      persistInsights(data.insights);
+      toast.success("竞品洞察生成完成");
+    } catch (e: any) {
+      toast.error(e.message ?? "竞品洞察生成失败，请重试");
+    } finally {
+      setInsightLoading(false);
+    }
+  };
 
   // Preview driven by productInfo + selected styles. Templates live outside the component.
   const previewTitle = useMemo(() => {
@@ -208,7 +243,7 @@ export default function CreateStep2() {
       ...updated[index],
       status: updated[index].status === "adopted" ? "pending" : "adopted",
     };
-    setInsights(updated);
+    persistInsights(updated);
     toast.success(updated[index].status === "adopted" ? "已融入正文" : "已取消融入");
   };
 
@@ -443,47 +478,73 @@ export default function CreateStep2() {
                   竞品洞察 · 选择融入正文
                 </span>
               </div>
-              <div className="space-y-2">
-                {insights.map((item, i) => (
-                  <div
-                    key={i}
-                    className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${
-                      item.status === "adopted"
-                        ? "border-primary/20 bg-primary/5"
-                        : "border-border/50 bg-white hover:border-primary/15 hover:bg-primary/[0.02]"
-                    }`}
-                    onClick={() => toggleInsight(i)}
+              {insights.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-border/60 bg-muted/30 p-5 text-center">
+                  <p className="text-sm text-muted-foreground mb-3">
+                    还未生成竞品洞察。基于商品信息快速生成，无需竞品链接。
+                  </p>
+                  <Button
+                    variant="outline"
+                    className="bg-white"
+                    onClick={handleGenerateInferredInsight}
+                    disabled={insightLoading}
                   >
-                    <div className="flex items-center gap-2.5 flex-1">
-                      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-all ${
-                        item.status === "adopted" ? "border-primary bg-primary" : "border-border"
-                      }`}>
-                        {item.status === "adopted" && (
-                          <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="20 6 9 17 4 12" />
-                          </svg>
-                        )}
-                      </div>
-                      <div>
-                        <span className="text-xs text-muted-foreground">{item.label}</span>
-                        <span className="text-sm text-foreground ml-1.5 font-medium">{item.detail}</span>
-                      </div>
-                    </div>
-                    {item.status !== "adopted" && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleInsight(i);
-                        }}
-                        className="shrink-0 text-[11px] px-2.5 py-1 rounded-full font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors flex items-center gap-1"
-                      >
-                        <Plus className="w-3 h-3" />
-                        融入
-                      </button>
+                    {insightLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                        正在生成…
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 mr-1.5" />
+                        一键生成竞品洞察
+                      </>
                     )}
-                  </div>
-                ))}
-              </div>
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {insights.map((item, i) => (
+                    <div
+                      key={i}
+                      className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${
+                        item.status === "adopted"
+                          ? "border-primary/20 bg-primary/5"
+                          : "border-border/50 bg-white hover:border-primary/15 hover:bg-primary/[0.02]"
+                      }`}
+                      onClick={() => toggleInsight(i)}
+                    >
+                      <div className="flex items-center gap-2.5 flex-1">
+                        <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-all ${
+                          item.status === "adopted" ? "border-primary bg-primary" : "border-border"
+                        }`}>
+                          {item.status === "adopted" && (
+                            <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                          )}
+                        </div>
+                        <div>
+                          <span className="text-xs text-muted-foreground">{item.label}</span>
+                          <span className="text-sm text-foreground ml-1.5 font-medium">{item.detail}</span>
+                        </div>
+                      </div>
+                      {item.status !== "adopted" && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleInsight(i);
+                          }}
+                          className="shrink-0 text-[11px] px-2.5 py-1 rounded-full font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors flex items-center gap-1"
+                        >
+                          <Plus className="w-3 h-3" />
+                          融入
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Strategy templates */}

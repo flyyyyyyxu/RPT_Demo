@@ -57,6 +57,16 @@ export interface CompetitorInsightRequest {
   sellingPoints: string[];
 }
 
+export interface CompetitorInsightInferredRequest {
+  productName: string;
+  sellingPoints: string[];
+  targetAudience?: string[];
+  category?: string;
+  subcategory?: string;
+  usageScenarios?: string[];
+  priceRange?: string;
+}
+
 export interface CompetitorInsightResponse {
   insights: CompetitorInsightItem[];
   error?: string;
