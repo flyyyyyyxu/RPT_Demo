@@ -1,6 +1,6 @@
 # 种草机 · 小红书商家 AI 爆文批量生产引擎
 
-> 🔗 **在线体验**：https://rpt-demo-dx45o5tqh-xukexin3-8296s-projects.vercel.app （这个链接无法在问卷中上传）
+> 🔗 **在线体验**：https://rpt-demo.vercel.app（这个链接无法在问卷中上传）
 >
 > *（如果链接打不开，可下载仓库、本地运行：`pnpm install && pnpm dev`）*
 
