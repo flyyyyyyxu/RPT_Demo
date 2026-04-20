@@ -10,7 +10,7 @@ import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 
 const HERO_BG = "https://d2xsxph8kpxj0f.cloudfront.net/310519663319340501/HSq26w75LQs6d3FSyDF3sX/hero-bg-abstract-5XSBi9GhnYPDPgmTCgRgGm.webp";
-const HERO_MOCKUP = "https://d2xsxph8kpxj0f.cloudfront.net/310519663319340501/HSq26w75LQs6d3FSyDF3sX/hero-mockup-QRrKyuBhfd7BgpeVnwj6d5.webp";
+const HERO_MOCKUP = "/hero-mockup.png";
 
 export default function HeroSection() {
   const [, navigate] = useLocation();
