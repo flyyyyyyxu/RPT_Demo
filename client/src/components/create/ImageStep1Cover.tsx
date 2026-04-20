@@ -334,8 +334,12 @@ export default function ImageStep1Cover({ onNext, onBack, onSkip }: ImageStep1Co
         {/* 小红书封面指南 */}
         <div className="rounded-2xl border border-border/60 bg-white p-5 shadow-sm">
           <div className="flex items-center gap-2 mb-4">
-            <BookOpen className="w-4 h-4 text-primary" />
-            <span className="text-sm font-bold">小红书封面指南</span>
+            <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center">
+              <BookOpen className="w-3.5 h-3.5 text-primary" />
+            </div>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              小红书封面指南
+            </span>
           </div>
           <div className="space-y-3">
             <TipItem
@@ -360,8 +364,12 @@ export default function ImageStep1Cover({ onNext, onBack, onSkip }: ImageStep1Co
         {/* Prompt 写作技巧 */}
         <div className="rounded-2xl border border-border/60 bg-white p-5 shadow-sm">
           <div className="flex items-center gap-2 mb-4">
-            <Lightbulb className="w-4 h-4 text-primary" />
-            <span className="text-sm font-bold">Prompt 写作技巧</span>
+            <div className="w-6 h-6 rounded-md bg-warm-orange/10 flex items-center justify-center">
+              <Lightbulb className="w-3.5 h-3.5 text-warm-orange" />
+            </div>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Prompt 写作技巧
+            </span>
           </div>
           <div className="space-y-3">
             <TipItem

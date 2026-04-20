@@ -16,7 +16,7 @@ export default function Footer() {
             <span className="text-sm font-bold text-foreground">种草机</span>
           </div>
           <div className="text-xs text-muted-foreground">
-            产品 Demo 展示 · 面向小红书商家的 AI 内容创作工具
+            https://github.com/flyyyyyyxu/RPT_Demo.git · 面向小红书商家的 AI 内容创作工具
           </div>
           <div className="flex items-center gap-5 text-xs text-muted-foreground">
             {["产品介绍", "使用帮助", "联系我们"].map((item) => (

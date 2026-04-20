@@ -41,23 +41,23 @@ export default function CreateLayout({ currentStep, children, rightAction }: Cre
                 >
                   <div className="flex items-center gap-1.5">
                     <div
-                      className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold transition-all ${
+                      className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold tracking-tight transition-all ${
                         step.id < currentStep
-                          ? "bg-primary text-white"
+                          ? "bg-primary/15 text-primary"
                           : step.id === currentStep
-                          ? "bg-primary text-white shadow-sm shadow-primary/30"
-                          : "bg-secondary text-muted-foreground"
+                          ? "bg-primary text-white shadow-md shadow-primary/30"
+                          : "bg-secondary text-muted-foreground/60"
                       }`}
                     >
-                      {step.id < currentStep ? <Check className="w-3 h-3" /> : step.id}
+                      {step.id < currentStep ? <Check className="w-3 h-3" strokeWidth={3} /> : step.id}
                     </div>
                     <span
-                      className={`text-xs font-medium hidden md:inline ${
+                      className={`text-xs font-semibold tracking-tight hidden md:inline transition-colors ${
                         step.id === currentStep
                           ? "text-foreground"
                           : step.id < currentStep
-                          ? "text-foreground/60"
-                          : "text-muted-foreground"
+                          ? "text-foreground/70"
+                          : "text-muted-foreground/60"
                       }`}
                     >
                       {step.label}

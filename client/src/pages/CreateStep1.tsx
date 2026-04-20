@@ -22,6 +22,7 @@ import {
   Clock,
   Sparkles,
   FileText,
+  Package,
 } from "lucide-react";
 import CreateLayout from "@/components/create/CreateLayout";
 import { useCreateContext, type InsightItem } from "@/contexts/CreateContext";
@@ -357,9 +358,13 @@ export default function CreateStep1() {
     <CreateLayout currentStep={1}>
       <div className="max-w-6xl mx-auto px-4 lg:px-8 py-8">
         {/* Page header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold tracking-tight mb-1.5">填写商品信息</h1>
-          <p className="text-sm text-muted-foreground">
+        <div className="mb-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-semibold tracking-wider mb-4">
+            <Package className="w-3.5 h-3.5" />
+            STEP 01 · 商品信息
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2.5">填写商品信息</h1>
+          <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl">
             告诉 AI 你要推荐什么，AI 会据此撰写笔记。必填项 3 个，预计 1 分钟。
           </p>
         </div>
@@ -593,8 +598,12 @@ export default function CreateStep1() {
             {/* Competitor Insight */}
             <div className="rounded-2xl border border-border/60 bg-white p-5 shadow-sm">
               <div className="flex items-center gap-2 mb-4">
-                <Search className="w-4 h-4 text-primary" />
-                <span className="text-sm font-bold">竞品洞察</span>
+                <div className="w-6 h-6 rounded-md bg-warm-orange/10 flex items-center justify-center">
+                  <Search className="w-3.5 h-3.5 text-warm-orange" />
+                </div>
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  竞品洞察
+                </span>
               </div>
 
               <AnimatePresence mode="wait">
@@ -650,8 +659,12 @@ export default function CreateStep1() {
             {/* AI Understanding */}
             <div className="rounded-2xl border border-border/60 bg-white p-5 shadow-sm">
               <div className="flex items-center gap-2 mb-4">
-                <Sparkles className="w-4 h-4 text-primary" />
-                <span className="text-sm font-bold">AI 理解预览</span>
+                <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center">
+                  <Sparkles className="w-3.5 h-3.5 text-primary" />
+                </div>
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  AI 理解预览
+                </span>
               </div>
               <AIUnderstanding
                 name={name}
@@ -666,8 +679,12 @@ export default function CreateStep1() {
             <div className="rounded-2xl border border-border/60 bg-white p-5 shadow-sm">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm font-bold">历史草稿</span>
+                  <div className="w-6 h-6 rounded-md bg-indigo/10 flex items-center justify-center">
+                    <Clock className="w-3.5 h-3.5 text-indigo" />
+                  </div>
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    历史草稿
+                  </span>
                 </div>
                 <button className="text-xs text-primary font-medium hover:underline flex items-center gap-1">
                   查看

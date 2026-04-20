@@ -1,11 +1,8 @@
 import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
-import WorkflowSection from "@/components/WorkflowSection";
-import ModeCompareSection from "@/components/ModeCompareSection";
-import InsightSection from "@/components/InsightSection";
-import StrategySection from "@/components/StrategySection";
-import ResultSection from "@/components/ResultSection";
 import ValueSection from "@/components/ValueSection";
+import CreationFlowSection from "@/components/CreationFlowSection";
+import FeaturesSection from "@/components/FeaturesSection";
 import CTASection from "@/components/CTASection";
 import Footer from "@/components/Footer";
 
@@ -15,12 +12,9 @@ export default function Home() {
       <Header />
       <main>
         <HeroSection />
-        <WorkflowSection />
-        <ModeCompareSection />
-        <InsightSection />
-        <StrategySection />
-        <ResultSection />
         <ValueSection />
+        <CreationFlowSection />
+        <FeaturesSection />
         <CTASection />
       </main>
       <Footer />

@@ -306,8 +306,12 @@ export default function ImageStep2Text({ onNext, onBack }: ImageStep2TextProps) 
         {/* Text analysis */}
         <div className="rounded-2xl border border-border/60 bg-white p-5 shadow-sm">
           <div className="flex items-center gap-2 mb-4">
-            <Sparkles className="w-4 h-4 text-primary" />
-            <span className="text-sm font-bold">封面文字分析</span>
+            <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center">
+              <Sparkles className="w-3.5 h-3.5 text-primary" />
+            </div>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              封面文字分析
+            </span>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="p-3 rounded-lg bg-secondary/40">
@@ -334,8 +338,12 @@ export default function ImageStep2Text({ onNext, onBack }: ImageStep2TextProps) 
         {/* Text tips */}
         <div className="rounded-2xl border border-border/60 bg-white p-5 shadow-sm">
           <div className="flex items-center gap-2 mb-4">
-            <Lightbulb className="w-4 h-4 text-primary" />
-            <span className="text-sm font-bold">封面文字小贴士</span>
+            <div className="w-6 h-6 rounded-md bg-warm-orange/10 flex items-center justify-center">
+              <Lightbulb className="w-3.5 h-3.5 text-warm-orange" />
+            </div>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              封面文字小贴士
+            </span>
           </div>
           <div className="space-y-3">
             <TipItem
@@ -371,30 +379,32 @@ export default function ImageStep2Text({ onNext, onBack }: ImageStep2TextProps) 
         </div>
 
         {/* Actions */}
-        <div className="grid grid-cols-3 gap-3 pt-1">
+        <div className="space-y-2.5 pt-1">
           <Button
-            variant="outline"
-            className="bg-white"
-            onClick={onBack}
-          >
-            <ArrowLeft className="w-4 h-4 mr-1.5" />
-            返回制作封面
-          </Button>
-          <Button
-            variant="outline"
-            className="bg-white"
-            onClick={() => toast.success("草稿已保存")}
-          >
-            <Save className="w-4 h-4 mr-1.5" />
-            保存草稿
-          </Button>
-          <Button
-            className="bg-primary hover:bg-primary/90 text-white shadow-md shadow-primary/20"
+            className="w-full bg-primary hover:bg-primary/90 text-white shadow-md shadow-primary/20"
             onClick={handleNext}
           >
             下一步：上传配图
             <ArrowRight className="w-4 h-4 ml-1.5" />
           </Button>
+          <div className="grid grid-cols-2 gap-2.5">
+            <Button
+              variant="outline"
+              className="bg-white"
+              onClick={onBack}
+            >
+              <ArrowLeft className="w-4 h-4 mr-1.5" />
+              返回制作封面
+            </Button>
+            <Button
+              variant="outline"
+              className="bg-white"
+              onClick={() => toast.success("草稿已保存")}
+            >
+              <Save className="w-4 h-4 mr-1.5" />
+              保存草稿
+            </Button>
+          </div>
         </div>
       </motion.div>
     </div>

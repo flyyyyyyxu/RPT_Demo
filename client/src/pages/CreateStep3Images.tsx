@@ -16,6 +16,7 @@ import ImageStep2Text from "@/components/create/ImageStep2Text";
 import ImageStep3Upload from "@/components/create/ImageStep3Upload";
 import ImageStep4Preview from "@/components/create/ImageStep4Preview";
 import { useCreateContext } from "@/contexts/CreateContext";
+import { ImageIcon } from "lucide-react";
 
 export default function CreateStep3Images() {
   const [, navigate] = useLocation();
@@ -32,10 +33,14 @@ export default function CreateStep3Images() {
     <CreateLayout currentStep={3}>
       <div className="max-w-6xl mx-auto px-4 lg:px-8 py-8">
         {/* Page header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold tracking-tight mb-1.5">图片编辑（暂未接后端）</h1>
-          <p className="text-sm text-muted-foreground">
-            AI生成高点击封面图，配图自由上传，快速组合成更容易转化的笔记图片。
+        <div className="mb-8">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo/10 text-indigo text-xs font-semibold tracking-wider mb-4">
+            <ImageIcon className="w-3.5 h-3.5" />
+            STEP 03 · 图片编辑
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2.5">图片编辑</h1>
+          <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl">
+            AI 生成高点击封面图，配图自由上传，快速组合成更容易转化的笔记图片。
           </p>
         </div>
 

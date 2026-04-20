@@ -20,6 +20,7 @@ import {
   Plus,
   Loader2,
   Sparkles,
+  Settings2,
 } from "lucide-react";
 import CreateLayout from "@/components/create/CreateLayout";
 import { useCreateContext, type InsightItem } from "@/contexts/CreateContext";
@@ -254,10 +255,14 @@ export default function CreateStep2() {
     <CreateLayout currentStep={2}>
       <div className="max-w-6xl mx-auto px-4 lg:px-8 py-8">
         {/* Page header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold tracking-tight mb-1.5">内容策略设置</h1>
-          <p className="text-sm text-muted-foreground">
-            已根据商品信息，预选适合该商品的表达方式，可手动调整，AI 将据此生成专业标题和正文。可随时返回上一步修改商品信息。
+        <div className="mb-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-warm-orange/10 text-warm-orange text-xs font-semibold tracking-wider mb-4">
+            <Settings2 className="w-3.5 h-3.5" />
+            STEP 02 · 内容策略
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2.5">内容策略设置</h1>
+          <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl">
+            已根据商品信息预选适合该商品的表达方式，可手动调整，AI 将据此生成专业标题和正文。
           </p>
         </div>
 
@@ -433,9 +438,11 @@ export default function CreateStep2() {
             {/* Live preview - now shows title + opening */}
             <div className="rounded-2xl border border-border/60 bg-white p-5 shadow-sm">
               <div className="flex items-center gap-2 mb-4">
-                <Eye className="w-4 h-4 text-primary" />
+                <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center">
+                  <Eye className="w-3.5 h-3.5 text-primary" />
+                </div>
                 <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Preview · 标题与开头预览
+                  标题与开头预览
                 </span>
               </div>
               <div className="space-y-3">
@@ -476,7 +483,9 @@ export default function CreateStep2() {
             {/* Competitor insight with selectable items */}
             <div className="rounded-2xl border border-border/60 bg-white p-5 shadow-sm">
               <div className="flex items-center gap-2 mb-4">
-                <Search className="w-4 h-4 text-primary" />
+                <div className="w-6 h-6 rounded-md bg-warm-orange/10 flex items-center justify-center">
+                  <Search className="w-3.5 h-3.5 text-warm-orange" />
+                </div>
                 <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   竞品洞察 · 选择融入正文
                 </span>
@@ -553,7 +562,9 @@ export default function CreateStep2() {
             {/* Strategy templates */}
             <div className="rounded-2xl border border-border/60 bg-white p-5 shadow-sm">
               <div className="flex items-center gap-2 mb-4">
-                <Zap className="w-4 h-4 text-primary" />
+                <div className="w-6 h-6 rounded-md bg-indigo/10 flex items-center justify-center">
+                  <Zap className="w-3.5 h-3.5 text-indigo" />
+                </div>
                 <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   一键套用策略模板
                 </span>
@@ -572,30 +583,32 @@ export default function CreateStep2() {
             </div>
 
             {/* Actions */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-2.5">
               <Button
-                variant="outline"
-                className="bg-white"
-                onClick={() => navigate("/create")}
-              >
-                <ArrowLeft className="w-4 h-4 mr-1.5" />
-                返回上一步
-              </Button>
-              <Button
-                variant="outline"
-                className="bg-white"
-                onClick={() => toast.success("草稿已保存")}
-              >
-                <Save className="w-4 h-4 mr-1.5" />
-                保存草稿
-              </Button>
-              <Button
-                className="bg-primary hover:bg-primary/90 text-white shadow-md shadow-primary/20"
+                className="w-full bg-primary hover:bg-primary/90 text-white shadow-md shadow-primary/20"
                 onClick={handleNext}
               >
                 下一步：图片生成
                 <ArrowRight className="w-4 h-4 ml-1.5" />
               </Button>
+              <div className="grid grid-cols-2 gap-2.5">
+                <Button
+                  variant="outline"
+                  className="bg-white"
+                  onClick={() => navigate("/create")}
+                >
+                  <ArrowLeft className="w-4 h-4 mr-1.5" />
+                  返回上一步
+                </Button>
+                <Button
+                  variant="outline"
+                  className="bg-white"
+                  onClick={() => toast.success("草稿已保存")}
+                >
+                  <Save className="w-4 h-4 mr-1.5" />
+                  保存草稿
+                </Button>
+              </div>
             </div>
           </motion.div>
         </div>

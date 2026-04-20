@@ -18,6 +18,7 @@ import {
   BarChart3,
   AlertTriangle,
   Check,
+  Eye,
 } from "lucide-react";
 import CreateLayout from "@/components/create/CreateLayout";
 import { useCreateContext } from "@/contexts/CreateContext";
@@ -160,14 +161,18 @@ export default function CreateStep4Result() {
     <CreateLayout currentStep={4}>
       <div className="max-w-7xl mx-auto px-4 lg:px-6 py-8">
         {/* Page header */}
-        <div className="mb-6">
-          <div className="flex items-center gap-3 mb-1.5">
-            <h1 className="text-2xl font-bold tracking-tight">生成预览</h1>
-            <span className="text-[11px] px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 font-medium border border-emerald-200">
+        <div className="mb-8">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald/10 text-emerald text-xs font-semibold tracking-wider mb-4">
+            <Eye className="w-3.5 h-3.5" />
+            STEP 04 · 生成预览
+          </div>
+          <div className="flex items-center gap-3 mb-2.5 flex-wrap">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">生成预览</h1>
+            <span className="text-[11px] px-2.5 py-1 rounded-full bg-emerald/10 text-emerald font-medium border border-emerald/20">
               生成完成 · 3 版
             </span>
           </div>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl">
             点击版本卡片可多选，查看 AI 洞察数据，选择最佳版本发布。
           </p>
         </div>
@@ -175,7 +180,9 @@ export default function CreateStep4Result() {
         {/* Strategy summary */}
         <div className="rounded-2xl border border-border/60 bg-white p-5 shadow-sm mb-6">
           <div className="flex items-center gap-2 mb-3">
-            <Sparkles className="w-4 h-4 text-primary" />
+            <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center">
+              <Sparkles className="w-3.5 h-3.5 text-primary" />
+            </div>
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               当前内容策略
             </span>
@@ -317,8 +324,12 @@ export default function CreateStep4Result() {
           {versions.map((v) => (
             <div key={v.id} className="rounded-2xl border border-border/60 bg-white p-4 shadow-sm">
               <div className="flex items-center gap-2 mb-3">
-                <BarChart3 className="w-4 h-4 text-primary" />
-                <span className="text-xs font-bold text-foreground">AI 洞察</span>
+                <div className="w-6 h-6 rounded-md bg-warm-orange/10 flex items-center justify-center">
+                  <BarChart3 className="w-3.5 h-3.5 text-warm-orange" />
+                </div>
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  AI 洞察
+                </span>
               </div>
               <div className="grid grid-cols-2 gap-2.5 mb-3">
                 <MetricCard
